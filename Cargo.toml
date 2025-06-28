@@ -1,0 +1,11 @@
+[package]
+name = "rayca-core"
+version = "0.1.0"
+edition = "2024"
+authors = ["Antonio Caggiano <info@antoniocaggiano.eu>"]
+description = "The core of the Rayca project"
+license = "MIT"
+readme = "README.md"
+
+[dependencies]
+winit = { version = "0.30.*", features = [ "android-native-activity" ] }
