@@ -24,6 +24,10 @@ mod pass;
 pub use pass::*;
 mod pipeline;
 pub use pipeline::*;
+#[cfg(not(target_os = "android"))]
+mod slang;
+#[cfg(not(target_os = "android"))]
+pub use slang::*;
 mod surface;
 pub use surface::*;
 mod swapchain;
