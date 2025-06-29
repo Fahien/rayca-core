@@ -28,6 +28,8 @@ mod surface;
 pub use surface::*;
 mod swapchain;
 pub use swapchain::*;
+mod shader;
+pub use shader::*;
 
 pub use ash;
 pub use ash::vk;

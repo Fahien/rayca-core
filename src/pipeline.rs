@@ -2,11 +2,10 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
-use std::{ffi::CString, rc::Rc};
+use std::rc::Rc;
 
 use ash::vk;
 use rayca_geometry::*;
-use slang::Downcast;
 
 use crate::*;
 
@@ -16,7 +15,14 @@ pub struct Pipeline {
 }
 
 impl Pipeline {
-    pub fn new(dev: &mut Dev, pass: &Pass, width: u32, height: u32) -> Self {
+    pub fn new(
+        dev: &mut Dev,
+        vert: vk::PipelineShaderStageCreateInfo,
+        frag: vk::PipelineShaderStageCreateInfo,
+        pass: &Pass,
+        width: u32,
+        height: u32,
+    ) -> Self {
         // Pipeline layout (device, shader reflection?)
         let layout = {
             let create_info = vk::PipelineLayoutCreateInfo::default();
@@ -26,19 +32,6 @@ impl Pipeline {
 
         // Graphics pipeline (shaders, renderpass)
         let graphics = {
-            let vert_mod = Self::create_shader_module(dev, "main.vert.slang");
-            let frag_mod = Self::create_shader_module(dev, "main.frag.slang");
-
-            let entrypoint = CString::new("main").expect("Failed to create main entrypoint");
-            let vert_stage = vk::PipelineShaderStageCreateInfo::default()
-                .stage(vk::ShaderStageFlags::VERTEX)
-                .module(vert_mod)
-                .name(&entrypoint);
-            let frag_stage = vk::PipelineShaderStageCreateInfo::default()
-                .stage(vk::ShaderStageFlags::FRAGMENT)
-                .module(frag_mod)
-                .name(&entrypoint);
-
             let vertex_bindings = [vk::VertexInputBindingDescription::default()
                 .binding(0)
                 .stride(std::mem::size_of::<Vertex>() as u32)
@@ -97,7 +90,7 @@ impl Pipeline {
                 .logic_op_enable(false)
                 .attachments(&blend_attachment);
 
-            let stages = [vert_stage, frag_stage];
+            let stages = [vert, frag];
 
             let create_info = [vk::GraphicsPipelineCreateInfo::default()
                 .stages(&stages)
@@ -115,10 +108,7 @@ impl Pipeline {
                     .create_graphics_pipelines(vk::PipelineCache::null(), &create_info, None)
             }
             .expect("Failed to create Vulkan graphics pipeline");
-            unsafe {
-                dev.device.destroy_shader_module(vert_mod, None);
-                dev.device.destroy_shader_module(frag_mod, None);
-            }
+
             pipelines[0]
         };
 
@@ -130,59 +120,6 @@ impl Pipeline {
             graphics,
             device: Rc::clone(&dev.device),
         }
-    }
-
-    pub fn create_shader_module(dev: &Dev, shader_name: &str) -> vk::ShaderModule {
-        let global_session = slang::GlobalSession::new().unwrap();
-
-        let search_path = std::ffi::CString::new("shaders").unwrap();
-
-        // All compiler options are available through this builder.
-        let session_options = slang::CompilerOptions::default()
-            .optimization(slang::OptimizationLevel::High)
-            .matrix_layout_row(true);
-
-        let targets = [slang::TargetDesc::default()
-            .format(slang::CompileTarget::Spirv)
-            .profile(global_session.find_profile("sm_6_5"))];
-
-        let search_paths = [search_path.as_ptr()];
-
-        let session_desc = slang::SessionDesc::default()
-            .targets(&targets)
-            .search_paths(&search_paths)
-            .options(&session_options);
-
-        let session = global_session.create_session(&session_desc).unwrap();
-
-        let module = session.load_module(shader_name).unwrap();
-
-        let entry_point = module.find_entry_point_by_name("main").unwrap();
-
-        let program = session
-            .create_composite_component_type(&[
-                module.downcast().clone(),
-                entry_point.downcast().clone(),
-            ])
-            .expect("Failed to create program");
-
-        let linked_program = program.link().expect("Failed to link program");
-
-        let shader_blob = linked_program
-            .entry_point_code(0, 0)
-            .expect("Failed to get entry point code");
-        let shader_bytecode = shader_blob.as_slice();
-        assert_eq!(shader_bytecode.len() % 4, 0);
-        let shader_code = unsafe {
-            std::slice::from_raw_parts(
-                shader_bytecode.as_ptr() as *const u32,
-                shader_bytecode.len() / size_of::<u32>(),
-            )
-        };
-
-        let create_info = vk::ShaderModuleCreateInfo::default().code(shader_code);
-        unsafe { dev.device.create_shader_module(&create_info, None) }
-            .expect("Failed to create Vulkan shader module")
     }
 
     pub fn draw(&self, frame: &Frame, buffer: &Buffer) {

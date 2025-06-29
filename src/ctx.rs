@@ -19,8 +19,11 @@ impl Ctx {
     }
 
     pub fn new(extensions_names: &[*const c_char]) -> Self {
-        let layers = [CString::new("VK_LAYER_KHRONOS_validation").unwrap()];
-        let layer_names: Vec<*const i8> = layers.iter().map(|name| name.as_ptr()).collect();
+        let mut layers = vec![];
+        if cfg!(not(target_os = "android")) {
+            layers.push(CString::new("VK_LAYER_KHRONOS_validation").unwrap());
+        }
+        let layer_names: Vec<*const c_char> = layers.iter().map(|name| name.as_ptr()).collect();
 
         let entry = unsafe { ash::Entry::load() }.expect("Failed to create ash entry");
         let app_info = vk::ApplicationInfo {
@@ -91,6 +94,11 @@ impl<'w> CtxBuilder<'w> {
             extensions_names.push(vk::KHR_PORTABILITY_ENUMERATION_NAME.as_ptr());
             extensions_names.push(khr::get_physical_device_properties2::NAME.as_ptr());
             extensions_names.push(ext::metal_surface::NAME.as_ptr());
+        }
+
+        #[cfg(target_os = "android")]
+        {
+            extensions_names.push(khr::android_surface::NAME.as_ptr());
         }
 
         Ctx::new(&extensions_names)

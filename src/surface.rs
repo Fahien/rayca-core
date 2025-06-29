@@ -45,6 +45,15 @@ impl Surface {
                 unsafe { metal_surface.create_metal_surface(&create_info, None) }
                     .expect("Failed to create metal surface")
             }
+            #[cfg(target_os = "android")]
+            (RawDisplayHandle::Android(_display), RawWindowHandle::AndroidNdk(window)) => {
+                let android_surface =
+                    khr::android_surface::Instance::new(&ctx.entry, &ctx.instance);
+                let create_info = vk::AndroidSurfaceCreateInfoKHR::default()
+                    .window(window.a_native_window.as_ptr());
+                unsafe { android_surface.create_android_surface(&create_info, None) }
+                    .expect("Failed to create android surface")
+            }
             _ => unimplemented!("{:?}", display_handle),
         };
 

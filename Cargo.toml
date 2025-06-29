@@ -10,6 +10,8 @@ readme = "README.md"
 [dependencies]
 winit = { version = "0.30.*", features = [ "android-native-activity" ] }
 ash = "0.38.*"
+
+[target.'cfg(not(target_os="android"))'.dependencies]
 slang = { git = "https://github.com/Fahien/slang-rs" }
 rayca-geometry = { git = "https://github.com/Fahien/rayca-geometry" }
 
