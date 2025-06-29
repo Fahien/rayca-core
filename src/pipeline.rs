@@ -2,19 +2,31 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
-use std::rc::Rc;
+use std::{any::Any, rc::Rc};
 
 use ash::vk;
 use rayca_geometry::*;
 
 use crate::*;
 
-pub struct Pipeline {
-    pub graphics: vk::Pipeline,
-    device: Rc<ash::Device>,
+pub trait Pipeline: Any {
+    fn as_any(&self) -> &dyn Any;
+    fn get_name(&self) -> &String;
+    fn get_set_layouts(&self) -> &[vk::DescriptorSetLayout];
+    fn get_layout(&self) -> vk::PipelineLayout;
+    fn get_pipeline(&self) -> vk::Pipeline;
+    fn draw(&self, frame: &Frame, buffer: &Buffer);
 }
 
-impl Pipeline {
+pub struct DefaultPipeline {
+    set_layouts: Vec<vk::DescriptorSetLayout>,
+    layout: vk::PipelineLayout,
+    pub graphics: vk::Pipeline,
+    device: Rc<ash::Device>,
+    name: String,
+}
+
+impl DefaultPipeline {
     pub fn new(
         dev: &mut Dev,
         vert: vk::PipelineShaderStageCreateInfo,
@@ -117,16 +129,44 @@ impl Pipeline {
         }
 
         Self {
+            set_layouts: vec![],
+            layout,
             graphics,
             device: Rc::clone(&dev.device),
+            name: String::from("LegacyPipeline"),
         }
     }
+}
 
-    pub fn draw(&self, frame: &Frame, buffer: &Buffer) {
+impl Pipeline for DefaultPipeline {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn get_name(&self) -> &String {
+        &self.name
+    }
+
+    fn get_set_layouts(&self) -> &[vk::DescriptorSetLayout] {
+        &self.set_layouts
+    }
+
+    fn get_layout(&self) -> vk::PipelineLayout {
+        self.layout
+    }
+
+    fn get_pipeline(&self) -> vk::Pipeline {
+        self.graphics
+    }
+
+    fn draw(&self, frame: &Frame, buffer: &Buffer) {
         let graphics_bind_point = vk::PipelineBindPoint::GRAPHICS;
         unsafe {
-            self.device
-                .cmd_bind_pipeline(frame.command_buffer, graphics_bind_point, self.graphics)
+            self.device.cmd_bind_pipeline(
+                frame.command_buffer,
+                graphics_bind_point,
+                self.get_pipeline(),
+            )
         };
 
         let first_binding = 0;
@@ -144,7 +184,7 @@ impl Pipeline {
     }
 }
 
-impl Drop for Pipeline {
+impl Drop for DefaultPipeline {
     fn drop(&mut self) {
         unsafe {
             self.device.destroy_pipeline(self.graphics, None);
