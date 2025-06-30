@@ -16,6 +16,12 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - uses: jakoch/install-vulkan-sdk-action@v1
+      with:
+        vulkan_version: 1.4.313.0
+        install_runtime: true
+        cache: true
+        stripdown: true
     - name: Build
       run: cargo build --verbose
     - name: Run tests
