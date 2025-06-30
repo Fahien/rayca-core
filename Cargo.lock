@@ -1128,7 +1128,7 @@ dependencies = [
 [[package]]
 name = "rayca-geometry"
 version = "0.1.0"
-source = "git+https://github.com/Fahien/rayca-geometry#5e93657eba116d96ec926d00e4aca1d94760e042"
+source = "git+https://github.com/Fahien/rayca-geometry#a9910f46913e013cefcfb0cba9ccf1b3125faa14"
 dependencies = [
  "rayca-math",
  "rayca-util",

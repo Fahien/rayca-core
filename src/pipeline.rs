@@ -5,7 +5,6 @@
 use std::{any::Any, rc::Rc};
 
 use ash::vk;
-use rayca_geometry::*;
 
 use crate::*;
 
@@ -27,7 +26,7 @@ pub struct DefaultPipeline {
 }
 
 impl DefaultPipeline {
-    pub fn new(
+    pub fn new<V: VertexInput>(
         dev: &mut Dev,
         vert: vk::PipelineShaderStageCreateInfo,
         frag: vk::PipelineShaderStageCreateInfo,
@@ -44,16 +43,8 @@ impl DefaultPipeline {
 
         // Graphics pipeline (shaders, renderpass)
         let graphics = {
-            let vertex_bindings = [vk::VertexInputBindingDescription::default()
-                .binding(0)
-                .stride(std::mem::size_of::<Vertex>() as u32)
-                .input_rate(vk::VertexInputRate::VERTEX)];
-
-            let vertex_attributes = [vk::VertexInputAttributeDescription::default()
-                .binding(0)
-                .location(0)
-                .format(vk::Format::R32G32B32_SFLOAT)
-                .offset(0)];
+            let vertex_attributes = V::get_attributes();
+            let vertex_bindings = V::get_bindings();
 
             let vertex_input = vk::PipelineVertexInputStateCreateInfo::default()
                 .vertex_attribute_descriptions(&vertex_attributes)

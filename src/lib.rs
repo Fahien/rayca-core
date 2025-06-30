@@ -38,3 +38,4 @@ pub use shader::*;
 pub use ash;
 pub use ash::vk;
 pub use winit;
+pub use rayca_geometry::*;
