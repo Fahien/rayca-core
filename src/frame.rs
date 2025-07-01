@@ -92,6 +92,7 @@ impl Drop for Framebuffer {
 /// Frame resources that do not need to be recreated
 /// when the swapchain goes out of date
 pub struct FrameCache {
+    _descriptors: Descriptors,
     pub command_buffer: vk::CommandBuffer,
     pub fence: vk::Fence,
     pub can_wait: bool,
@@ -101,7 +102,7 @@ pub struct FrameCache {
 }
 
 impl FrameCache {
-    pub fn new(dev: &mut Dev) -> Self {
+    pub fn new(dev: &Dev) -> Self {
         // Graphics command buffer (device, command pool)
         let command_buffer = {
             let alloc_info = vk::CommandBufferAllocateInfo::default()
@@ -137,6 +138,7 @@ impl FrameCache {
         };
 
         Self {
+            _descriptors: Descriptors::new(&dev.device),
             command_buffer,
             fence,
             can_wait: true,

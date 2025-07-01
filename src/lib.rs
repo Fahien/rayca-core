@@ -10,6 +10,8 @@ mod debug;
 use debug::*;
 mod device;
 pub use device::*;
+mod descriptor;
+pub use descriptor::*;
 mod events;
 pub use events::*;
 mod frame;
