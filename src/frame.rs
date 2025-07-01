@@ -1,26 +1,23 @@
-// Copyright © 2025
+// Copyright © 2021-2024
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
-use ash::{Device, vk};
+use ash::vk;
 use std::rc::Rc;
 
 use super::*;
 
-pub struct Frame {
+/// This is the one that is going to be recreated
+/// when the swapchain goes out of date
+pub struct Framebuffer {
     pub area: vk::Rect2D,
     // @todo Make a map of framebuffers indexed by render-pass as key
     pub framebuffer: vk::Framebuffer,
     pub image_view: vk::ImageView,
-    pub command_buffer: vk::CommandBuffer,
-    pub fence: vk::Fence,
-    pub can_wait: bool,
-    pub image_ready: vk::Semaphore,
-    pub image_drawn: vk::Semaphore,
-    device: Rc<Device>,
+    device: Rc<ash::Device>,
 }
 
-impl Frame {
+impl Framebuffer {
     pub fn new(dev: &mut Dev, image: &Image, pass: &Pass) -> Self {
         // Image view into a swapchain images (device, image, format)
         let image_view = {
@@ -62,6 +59,49 @@ impl Frame {
                 .expect("Failed to create Vulkan framebuffer")
         };
 
+        // Needed by cmd_begin_render_pass
+        let area = vk::Rect2D::default()
+            .offset(vk::Offset2D::default().x(0).y(0))
+            .extent(
+                vk::Extent2D::default()
+                    .width(image.width)
+                    .height(image.height),
+            );
+
+        Self {
+            area,
+            framebuffer,
+            image_view,
+            device: dev.device.device.clone(),
+        }
+    }
+}
+
+impl Drop for Framebuffer {
+    fn drop(&mut self) {
+        unsafe {
+            self.device
+                .device_wait_idle()
+                .expect("Failed to wait for device");
+            self.device.destroy_framebuffer(self.framebuffer, None);
+            self.device.destroy_image_view(self.image_view, None);
+        }
+    }
+}
+
+/// Frame resources that do not need to be recreated
+/// when the swapchain goes out of date
+pub struct FrameCache {
+    pub command_buffer: vk::CommandBuffer,
+    pub fence: vk::Fence,
+    pub can_wait: bool,
+    pub image_ready: vk::Semaphore,
+    pub image_drawn: vk::Semaphore,
+    device: Rc<ash::Device>,
+}
+
+impl FrameCache {
+    pub fn new(dev: &mut Dev) -> Self {
         // Graphics command buffer (device, command pool)
         let command_buffer = {
             let alloc_info = vk::CommandBufferAllocateInfo::default()
@@ -96,19 +136,7 @@ impl Frame {
             }
         };
 
-        // Needed by cmd_begin_render_pass
-        let area = vk::Rect2D::default()
-            .offset(vk::Offset2D::default().x(0).y(0))
-            .extent(
-                vk::Extent2D::default()
-                    .width(image.width)
-                    .height(image.height),
-            );
-
-        Frame {
-            area,
-            framebuffer,
-            image_view,
+        Self {
             command_buffer,
             fence,
             can_wait: true,
@@ -133,12 +161,41 @@ impl Frame {
         }
         self.can_wait = false;
     }
+}
+
+impl Drop for FrameCache {
+    fn drop(&mut self) {
+        unsafe {
+            self.device.destroy_semaphore(self.image_drawn, None);
+            self.device.destroy_semaphore(self.image_ready, None);
+            self.device.destroy_fence(self.fence, None)
+        }
+    }
+}
+
+pub struct Frame {
+    pub buffer: Framebuffer,
+    pub cache: FrameCache,
+    pub device: Rc<ash::Device>,
+}
+
+impl Frame {
+    pub fn new(dev: &mut Dev, image: &Image, pass: &Pass) -> Self {
+        let buffer = Framebuffer::new(dev, image, pass);
+        let cache = FrameCache::new(dev);
+
+        Frame {
+            buffer,
+            cache,
+            device: dev.device.device.clone(),
+        }
+    }
 
     pub fn begin(&self, pass: &Pass) {
         let begin_info = vk::CommandBufferBeginInfo::default();
         unsafe {
             self.device
-                .begin_command_buffer(self.command_buffer, &begin_info)
+                .begin_command_buffer(self.cache.command_buffer, &begin_info)
         }
         .expect("Failed to begin Vulkan command buffer");
 
@@ -146,23 +203,23 @@ impl Frame {
         clear.color.float32 = [0.025, 0.025, 0.025, 1.0];
         let clear_values = [clear];
         let create_info = vk::RenderPassBeginInfo::default()
-            .framebuffer(self.framebuffer)
+            .framebuffer(self.buffer.framebuffer)
             .render_pass(pass.render)
-            .render_area(self.area)
+            .render_area(self.buffer.area)
             .clear_values(&clear_values);
         // Record it in the main command buffer
         let contents = vk::SubpassContents::INLINE;
         unsafe {
             self.device
-                .cmd_begin_render_pass(self.command_buffer, &create_info, contents)
+                .cmd_begin_render_pass(self.cache.command_buffer, &create_info, contents)
         };
     }
 
     pub fn end(&self) {
         unsafe {
-            self.device.cmd_end_render_pass(self.command_buffer);
+            self.device.cmd_end_render_pass(self.cache.command_buffer);
             self.device
-                .end_command_buffer(self.command_buffer)
+                .end_command_buffer(self.cache.command_buffer)
                 .expect("Failed to end command buffer");
         }
     }
@@ -174,11 +231,11 @@ impl Frame {
         image_index: u32,
     ) -> Result<(), vk::Result> {
         // Wait for the image to be available ..
-        let wait_semaphores = [self.image_ready];
+        let wait_semaphores = [self.cache.image_ready];
         // .. at color attachment output stage
         let wait_dst_stage_mask = [vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT];
-        let command_buffers = [self.command_buffer];
-        let signal_semaphores = [self.image_drawn];
+        let command_buffers = [self.cache.command_buffer];
+        let signal_semaphores = [self.cache.image_drawn];
         let submits = [vk::SubmitInfo::default()
             .wait_semaphores(&wait_semaphores)
             .wait_dst_stage_mask(&wait_dst_stage_mask)
@@ -186,16 +243,16 @@ impl Frame {
             .signal_semaphores(&signal_semaphores)];
         unsafe {
             self.device
-                .queue_submit(dev.graphics_queue, &submits, self.fence)
+                .queue_submit(dev.graphics_queue, &submits, self.cache.fence)
         }
         .expect("Failed to submit to Vulkan queue");
 
-        self.can_wait = true;
+        self.cache.can_wait = true;
 
         // Present result
         let pres_image_indices = [image_index];
         let pres_swapchains = [swapchain.swapchain];
-        let pres_semaphores = [self.image_drawn];
+        let pres_semaphores = [self.cache.image_drawn];
         let present_info = vk::PresentInfoKHR::default()
             .image_indices(&pres_image_indices)
             .swapchains(&pres_swapchains)
@@ -218,11 +275,6 @@ impl Drop for Frame {
             self.device
                 .device_wait_idle()
                 .expect("Failed to wait for device");
-            self.device.destroy_semaphore(self.image_drawn, None);
-            self.device.destroy_semaphore(self.image_ready, None);
-            self.device.destroy_fence(self.fence, None);
-            self.device.destroy_framebuffer(self.framebuffer, None);
-            self.device.destroy_image_view(self.image_view, None);
         }
     }
 }
@@ -288,13 +340,13 @@ impl Frames for SwapchainFrames {
     fn next_frame(&mut self) -> Result<&mut Frame, vk::Result> {
         // Wait for this frame to be ready
         let frame = &mut self.frames[self.current];
-        frame.wait();
+        frame.cache.wait();
 
         let acquire_res = unsafe {
             self.swapchain.ext.acquire_next_image(
                 self.swapchain.swapchain,
-                u64::max_value(),
-                frame.image_ready,
+                u64::MAX,
+                frame.cache.image_ready,
                 vk::Fence::null(),
             )
         };

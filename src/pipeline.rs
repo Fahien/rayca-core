@@ -4,8 +4,8 @@
 
 use std::{any::Any, rc::Rc};
 
-use ash::vk;
 use crate::*;
+use ash::vk;
 
 pub trait Pipeline: Any {
     fn as_any(&self) -> &dyn Any;
@@ -161,7 +161,7 @@ impl RenderPipeline for DefaultPipeline {
         let graphics_bind_point = vk::PipelineBindPoint::GRAPHICS;
         unsafe {
             self.device.cmd_bind_pipeline(
-                frame.command_buffer,
+                frame.cache.command_buffer,
                 graphics_bind_point,
                 self.get_pipeline(),
             )
@@ -172,20 +172,17 @@ impl RenderPipeline for DefaultPipeline {
         let offsets = [vk::DeviceSize::default()];
         unsafe {
             self.device.cmd_bind_vertex_buffers(
-                frame.command_buffer,
+                frame.cache.command_buffer,
                 first_binding,
                 &buffers,
                 &offsets,
             );
-            self.device.cmd_draw(frame.command_buffer, 3, 1, 0, 0);
         }
-    }
-}
 
-impl Drop for DefaultPipeline {
-    fn drop(&mut self) {
+        let vertex_count = buffer.size as u32 / std::mem::size_of::<Vertex>() as u32;
         unsafe {
-            self.device.destroy_pipeline(self.graphics, None);
+            self.device
+                .cmd_draw(frame.cache.command_buffer, vertex_count, 1, 0, 0);
         }
     }
 }
