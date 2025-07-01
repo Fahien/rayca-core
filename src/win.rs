@@ -146,8 +146,9 @@ impl ApplicationHandler for Win {
                 self.exit = true;
             }
             WindowEvent::RedrawRequested => {}
-            WindowEvent::Resized(_) => {
+            WindowEvent::Resized(physical_size) => {
                 self.resized = true;
+                self.size = physical_size;
             }
             _ => (),
         }
