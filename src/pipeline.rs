@@ -5,7 +5,6 @@
 use std::{any::Any, rc::Rc};
 
 use ash::vk;
-
 use crate::*;
 
 pub trait Pipeline: Any {
@@ -35,6 +34,7 @@ impl DefaultPipeline {
         dev: &mut Dev,
         vert: vk::PipelineShaderStageCreateInfo,
         frag: vk::PipelineShaderStageCreateInfo,
+        topology: vk::PrimitiveTopology,
         pass: &Pass,
         width: u32,
         height: u32,
@@ -56,7 +56,7 @@ impl DefaultPipeline {
                 .vertex_binding_descriptions(&vertex_bindings);
 
             let input_assembly = vk::PipelineInputAssemblyStateCreateInfo::default()
-                .topology(vk::PrimitiveTopology::TRIANGLE_LIST)
+                .topology(topology)
                 .primitive_restart_enable(false);
 
             let raster_state = vk::PipelineRasterizationStateCreateInfo::default()

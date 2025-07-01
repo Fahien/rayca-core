@@ -9,11 +9,19 @@ use ash::vk;
 use crate::*;
 
 pub trait VertexInput {
+    fn get_topology() -> vk::PrimitiveTopology {
+        vk::PrimitiveTopology::TRIANGLE_LIST
+    }
+
     fn get_bindings() -> Vec<vk::VertexInputBindingDescription>;
     fn get_attributes() -> Vec<vk::VertexInputAttributeDescription>;
 }
 
 impl VertexInput for LineVertex {
+    fn get_topology() -> vk::PrimitiveTopology {
+        vk::PrimitiveTopology::LINE_LIST
+    }
+
     fn get_bindings() -> Vec<vk::VertexInputBindingDescription> {
         vec![
             vk::VertexInputBindingDescription::default()
