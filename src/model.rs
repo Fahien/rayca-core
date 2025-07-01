@@ -13,6 +13,40 @@ pub trait VertexInput {
     fn get_attributes() -> Vec<vk::VertexInputAttributeDescription>;
 }
 
+#[repr(C)]
+pub struct LineVertex {
+    pos: Point3,
+}
+
+impl LineVertex {
+    pub fn _new(x: f32, y: f32, z: f32) -> Self {
+        Self {
+            pos: Point3::new(x, y, z),
+        }
+    }
+}
+
+impl VertexInput for LineVertex {
+    fn get_bindings() -> Vec<vk::VertexInputBindingDescription> {
+        vec![
+            vk::VertexInputBindingDescription::default()
+                .binding(0)
+                .stride(std::mem::size_of::<LineVertex>() as u32)
+                .input_rate(vk::VertexInputRate::VERTEX),
+        ]
+    }
+
+    fn get_attributes() -> Vec<vk::VertexInputAttributeDescription> {
+        vec![
+            vk::VertexInputAttributeDescription::default()
+                .binding(0)
+                .location(0)
+                .format(vk::Format::R32G32B32A32_SFLOAT)
+                .offset(0),
+        ]
+    }
+}
+
 impl VertexInput for Vertex {
     fn get_bindings() -> Vec<vk::VertexInputBindingDescription> {
         vec![
