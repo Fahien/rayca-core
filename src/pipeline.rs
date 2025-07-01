@@ -39,9 +39,26 @@ impl DefaultPipeline {
         width: u32,
         height: u32,
     ) -> Self {
-        // Pipeline layout (device, shader reflection?)
+        let set_layout_bindings = vk::DescriptorSetLayoutBinding::default()
+            .binding(0)
+            .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER) // delta time?
+            .descriptor_count(1) // can specify more?
+            .stage_flags(vk::ShaderStageFlags::VERTEX);
+        let arr_bindings = vec![set_layout_bindings];
+
+        let set_layout_info = vk::DescriptorSetLayoutCreateInfo::default().bindings(&arr_bindings);
+
+        let set_layout = unsafe {
+            dev.device
+                .create_descriptor_set_layout(&set_layout_info, None)
+        }
+        .expect("Failed to create Vulkan descriptor set layout");
+
+        let set_layouts = vec![set_layout];
+
+        // Pipeline layout (device, descriptorset layouts, shader reflection?)
         let layout = {
-            let create_info = vk::PipelineLayoutCreateInfo::default();
+            let create_info = vk::PipelineLayoutCreateInfo::default().set_layouts(&set_layouts);
             unsafe { dev.device.create_pipeline_layout(&create_info, None) }
                 .expect("Failed to create Vulkan pipeline layout")
         };
@@ -120,12 +137,8 @@ impl DefaultPipeline {
             pipelines[0]
         };
 
-        unsafe {
-            dev.device.destroy_pipeline_layout(layout, None);
-        }
-
         Self {
-            set_layouts: vec![],
+            set_layouts,
             layout,
             graphics,
             device: dev.device.device.clone(),
@@ -183,6 +196,18 @@ impl RenderPipeline for DefaultPipeline {
         unsafe {
             self.device
                 .cmd_draw(frame.cache.command_buffer, vertex_count, 1, 0, 0);
+        }
+    }
+}
+
+impl Drop for DefaultPipeline {
+    fn drop(&mut self) {
+        unsafe {
+            for &set_layout in &self.set_layouts {
+                self.device.destroy_descriptor_set_layout(set_layout, None);
+            }
+            self.device.destroy_pipeline_layout(self.layout, None);
+            self.device.destroy_pipeline(self.graphics, None);
         }
     }
 }
