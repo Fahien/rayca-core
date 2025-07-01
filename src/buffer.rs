@@ -12,6 +12,7 @@ use crate::*;
 pub struct Buffer {
     allocation: vk_mem::Allocation,
     pub buffer: vk::Buffer,
+    usage: vk::BufferUsageFlags,
     pub size: vk::DeviceSize,
     allocator: Rc<vk_mem::Allocator>,
 }
@@ -20,10 +21,11 @@ impl Buffer {
     fn create_buffer(
         allocator: &vk_mem::Allocator,
         size: vk::DeviceSize,
+        usage: vk::BufferUsageFlags,
     ) -> (vk::Buffer, vk_mem::Allocation) {
         let buffer_info = vk::BufferCreateInfo::default()
             .size(size)
-            .usage(vk::BufferUsageFlags::VERTEX_BUFFER)
+            .usage(usage)
             .sharing_mode(vk::SharingMode::EXCLUSIVE);
 
         // Vulkan memory
@@ -42,21 +44,25 @@ impl Buffer {
         (buffer, allocation)
     }
 
-    pub fn new(allocator: &Rc<vk_mem::Allocator>) -> Self {
-        // Default size allows for 3 vertices
-        let size = std::mem::size_of::<Vertex>() as vk::DeviceSize * 3;
+    pub fn new<T>(allocator: &Rc<vk_mem::Allocator>, usage: vk::BufferUsageFlags) -> Self {
+        let size = std::mem::size_of::<T>() as vk::DeviceSize;
 
-        let (buffer, allocation) = Self::create_buffer(allocator, size);
+        let (buffer, allocation) = Self::create_buffer(allocator, size, usage);
 
         Self {
             allocation,
             buffer,
+            usage,
             size,
             allocator: allocator.clone(),
         }
     }
 
-    pub fn upload<T>(&mut self, src: *const T, size: vk::DeviceSize) {
+    pub fn _upload<T>(&mut self, data: &T) {
+        self.upload_raw(data as *const T, std::mem::size_of::<T>() as vk::DeviceSize);
+    }
+
+    pub fn upload_raw<T>(&mut self, src: *const T, size: vk::DeviceSize) {
         let data = unsafe { self.allocator.map_memory(&mut self.allocation) }
             .expect("Failed to map Vulkan memory");
         unsafe { data.copy_from(src as _, size as usize) };
@@ -73,12 +79,12 @@ impl Buffer {
             };
 
             self.size = size;
-            let (buffer, allocation) = Self::create_buffer(&self.allocator, size);
+            let (buffer, allocation) = Self::create_buffer(&self.allocator, size, self.usage);
             self.buffer = buffer;
             self.allocation = allocation;
         }
 
-        self.upload(arr.as_ptr(), size);
+        self.upload_raw(arr.as_ptr(), size);
     }
 }
 
