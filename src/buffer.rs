@@ -58,7 +58,7 @@ impl Buffer {
         }
     }
 
-    pub fn _upload<T>(&mut self, data: &T) {
+    pub fn upload<T>(&mut self, data: &T) {
         self.upload_raw(data as *const T, std::mem::size_of::<T>() as vk::DeviceSize);
     }
 

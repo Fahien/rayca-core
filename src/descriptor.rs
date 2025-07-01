@@ -39,7 +39,8 @@ impl Descriptors {
         }
     }
 
-    fn _allocate(&mut self, layouts: &[vk::DescriptorSetLayout]) -> Vec<vk::DescriptorSet> {
+    pub fn allocate(&mut self, layouts: &[vk::DescriptorSetLayout]) -> Vec<vk::DescriptorSet> {
+        assert!(!layouts.is_empty());
         let create_info = vk::DescriptorSetAllocateInfo::default()
             .descriptor_pool(self.pool)
             .set_layouts(layouts);

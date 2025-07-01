@@ -13,12 +13,44 @@ pub trait Pipeline: Any {
     fn get_set_layouts(&self) -> &[vk::DescriptorSetLayout];
     fn get_layout(&self) -> vk::PipelineLayout;
     fn get_pipeline(&self) -> vk::Pipeline;
+    fn get_device(&self) -> &ash::Device;
+
+    fn bind(&self, cache: &FrameCache) {
+        unsafe {
+            cache.device.cmd_bind_pipeline(
+                cache.command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                self.get_pipeline(),
+            );
+        }
+    }
+
+    fn draw(&self, cache: &FrameCache, vertex_buffer: &Buffer) {
+        let first_binding = 0;
+        let buffers = [vertex_buffer.buffer];
+        let offsets = [vk::DeviceSize::default()];
+        unsafe {
+            cache.device.cmd_bind_vertex_buffers(
+                cache.command_buffer,
+                first_binding,
+                &buffers,
+                &offsets,
+            );
+        }
+
+        let vertex_count = vertex_buffer.size as u32 / std::mem::size_of::<Vertex>() as u32;
+        unsafe {
+            cache
+                .device
+                .cmd_draw(cache.command_buffer, vertex_count, 1, 0, 0);
+        }
+    }
 }
 
 pub trait RenderPipeline: Pipeline {
     /// This needs to be manually implemented, as the generator does not know where to
     /// find the various buffers to bind and in which order and frequency to bind them
-    fn render(&self, frame: &Frame, buffer: &Buffer);
+    fn render(&self, frame: &mut Frame, buffer: &Buffer);
 }
 
 pub struct DefaultPipeline {
@@ -167,36 +199,58 @@ impl Pipeline for DefaultPipeline {
     fn get_pipeline(&self) -> vk::Pipeline {
         self.graphics
     }
+
+    fn get_device(&self) -> &ash::Device {
+        &self.device
+    }
 }
 
 impl RenderPipeline for DefaultPipeline {
-    fn render(&self, frame: &Frame, buffer: &Buffer) {
-        let graphics_bind_point = vk::PipelineBindPoint::GRAPHICS;
-        unsafe {
-            self.device.cmd_bind_pipeline(
-                frame.cache.command_buffer,
-                graphics_bind_point,
-                self.get_pipeline(),
-            )
-        };
+    fn render(&self, frame: &mut Frame, buffer: &Buffer) {
+        self.bind(&frame.cache);
 
-        let first_binding = 0;
-        let buffers = [buffer.buffer];
-        let offsets = [vk::DeviceSize::default()];
-        unsafe {
-            self.device.cmd_bind_vertex_buffers(
-                frame.cache.command_buffer,
-                first_binding,
-                &buffers,
-                &offsets,
-            );
+        if let Some(sets) = frame.cache.descriptors.sets.get(&self.get_layout()) {
+            unsafe {
+                self.device.cmd_bind_descriptor_sets(
+                    frame.cache.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    self.get_layout(),
+                    0,
+                    sets,
+                    &[],
+                );
+            }
+        } else {
+            let sets = frame.cache.descriptors.allocate(self.get_set_layouts());
+
+            // Update immediately the descriptor sets
+            let buffer_info = [vk::DescriptorBufferInfo::default()
+                .range(std::mem::size_of::<Mat4>() as vk::DeviceSize)
+                .buffer(frame.model_buffer.buffer)];
+
+            let descriptor_write = vk::WriteDescriptorSet::default()
+                .dst_set(sets[0])
+                .dst_binding(0)
+                .dst_array_element(0)
+                .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
+                .buffer_info(&buffer_info);
+
+            unsafe {
+                self.device.update_descriptor_sets(&[descriptor_write], &[]);
+
+                self.device.cmd_bind_descriptor_sets(
+                    frame.cache.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    self.get_layout(),
+                    0,
+                    &sets,
+                    &[],
+                );
+            }
+            frame.cache.descriptors.sets.insert(self.get_layout(), sets);
         }
 
-        let vertex_count = buffer.size as u32 / std::mem::size_of::<Vertex>() as u32;
-        unsafe {
-            self.device
-                .cmd_draw(frame.cache.command_buffer, vertex_count, 1, 0, 0);
-        }
+        self.draw(&frame.cache, buffer);
     }
 }
 

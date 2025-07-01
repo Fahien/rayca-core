@@ -92,13 +92,13 @@ impl Drop for Framebuffer {
 /// Frame resources that do not need to be recreated
 /// when the swapchain goes out of date
 pub struct FrameCache {
-    _descriptors: Descriptors,
+    pub descriptors: Descriptors,
     pub command_buffer: vk::CommandBuffer,
     pub fence: vk::Fence,
     pub can_wait: bool,
     pub image_ready: vk::Semaphore,
     pub image_drawn: vk::Semaphore,
-    device: Rc<ash::Device>,
+    pub device: Rc<ash::Device>,
 }
 
 impl FrameCache {
@@ -138,7 +138,7 @@ impl FrameCache {
         };
 
         Self {
-            _descriptors: Descriptors::new(&dev.device),
+            descriptors: Descriptors::new(&dev.device),
             command_buffer,
             fence,
             can_wait: true,
@@ -178,6 +178,7 @@ impl Drop for FrameCache {
 pub struct Frame {
     pub buffer: Framebuffer,
     pub cache: FrameCache,
+    pub model_buffer: Buffer,
     pub device: Rc<ash::Device>,
 }
 
@@ -189,6 +190,7 @@ impl Frame {
         Frame {
             buffer,
             cache,
+            model_buffer: Buffer::new::<Mat4>(&dev.allocator, vk::BufferUsageFlags::UNIFORM_BUFFER),
             device: dev.device.device.clone(),
         }
     }
