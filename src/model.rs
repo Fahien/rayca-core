@@ -2,9 +2,9 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
-use rayca_geometry::*;
-
 use ash::vk;
+use rayca_geometry::*;
+use std::mem::*;
 
 use crate::*;
 
@@ -26,7 +26,7 @@ impl VertexInput for LineVertex {
         vec![
             vk::VertexInputBindingDescription::default()
                 .binding(0)
-                .stride(std::mem::size_of::<LineVertex>() as u32)
+                .stride(size_of::<Self>() as u32)
                 .input_rate(vk::VertexInputRate::VERTEX),
         ]
     }
@@ -37,7 +37,12 @@ impl VertexInput for LineVertex {
                 .binding(0)
                 .location(0)
                 .format(vk::Format::R32G32B32A32_SFLOAT)
-                .offset(0),
+                .offset(offset_of!(Self, pos) as u32),
+            vk::VertexInputAttributeDescription::default()
+                .binding(0)
+                .location(1)
+                .format(vk::Format::R32G32B32A32_SFLOAT)
+                .offset(offset_of!(Self, color) as u32),
         ]
     }
 }
@@ -47,7 +52,7 @@ impl VertexInput for Vertex {
         vec![
             vk::VertexInputBindingDescription::default()
                 .binding(0)
-                .stride(std::mem::size_of::<Self>() as u32)
+                .stride(size_of::<Self>() as u32)
                 .input_rate(vk::VertexInputRate::VERTEX),
         ]
     }
@@ -58,7 +63,12 @@ impl VertexInput for Vertex {
                 .binding(0)
                 .location(0)
                 .format(vk::Format::R32G32B32A32_SFLOAT)
-                .offset(0),
+                .offset(offset_of!(Self, pos) as u32),
+            vk::VertexInputAttributeDescription::default()
+                .binding(0)
+                .location(1)
+                .format(vk::Format::R32G32B32A32_SFLOAT)
+                .offset(offset_of!(Self, ext.color) as u32),
         ]
     }
 }
