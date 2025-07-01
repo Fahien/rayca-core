@@ -8,6 +8,8 @@ mod ctx;
 pub use ctx::*;
 mod debug;
 use debug::*;
+mod device;
+pub use device::*;
 mod events;
 pub use events::*;
 mod frame;

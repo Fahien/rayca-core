@@ -13,19 +13,6 @@ pub trait VertexInput {
     fn get_attributes() -> Vec<vk::VertexInputAttributeDescription>;
 }
 
-#[repr(C)]
-pub struct LineVertex {
-    pos: Point3,
-}
-
-impl LineVertex {
-    pub fn _new(x: f32, y: f32, z: f32) -> Self {
-        Self {
-            pos: Point3::new(x, y, z),
-        }
-    }
-}
-
 impl VertexInput for LineVertex {
     fn get_bindings() -> Vec<vk::VertexInputBindingDescription> {
         vec![

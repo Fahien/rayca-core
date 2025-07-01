@@ -1,93 +1,92 @@
-// Copyright © 2021-2023
+// Copyright © 2021-2025
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
 use std::rc::Rc;
 
 use ash::vk;
-use rayca_geometry::*;
+use vk_mem::Alloc;
 
 use crate::*;
 
 pub struct Buffer {
-    memory: vk::DeviceMemory,
+    allocation: vk_mem::Allocation,
     pub buffer: vk::Buffer,
-    pub size: u64,
-    device: Rc<ash::Device>,
+    pub size: vk::DeviceSize,
+    allocator: Rc<vk_mem::Allocator>,
 }
 
 impl Buffer {
-    pub fn new(ctx: &Ctx, dev: &mut Dev) -> Self {
-        // Vertex buffer of triangle to draw
-        let size = std::mem::size_of::<Vertex>() as u64 * 3;
-        let buffer_create_info = vk::BufferCreateInfo::default()
+    fn create_buffer(
+        allocator: &vk_mem::Allocator,
+        size: vk::DeviceSize,
+    ) -> (vk::Buffer, vk_mem::Allocation) {
+        let buffer_info = vk::BufferCreateInfo::default()
             .size(size)
             .usage(vk::BufferUsageFlags::VERTEX_BUFFER)
             .sharing_mode(vk::SharingMode::EXCLUSIVE);
-        let buffer = unsafe { dev.device.create_buffer(&buffer_create_info, None) }
-            .expect("Failed to create Vulkan vertex buffer");
 
-        let requirements = unsafe { dev.device.get_buffer_memory_requirements(buffer) };
-
-        let memory_type_index: u32 = {
-            let mut mem_index: u32 = 0;
-            let memory_properties = unsafe {
-                ctx.instance
-                    .get_physical_device_memory_properties(dev.physical)
-            };
-            for (i, memtype) in memory_properties.memory_types.iter().enumerate() {
-                let res: vk::MemoryPropertyFlags = memtype.property_flags
-                    & (vk::MemoryPropertyFlags::HOST_VISIBLE
-                        | vk::MemoryPropertyFlags::HOST_COHERENT);
-                if (requirements.memory_type_bits & (1 << i) != 0) && res.as_raw() != 0 {
-                    mem_index = i as u32;
-                }
-            }
-            mem_index
+        // Vulkan memory
+        let create_info = vk_mem::AllocationCreateInfo {
+            usage: vk_mem::MemoryUsage::Auto,
+            flags: vk_mem::AllocationCreateFlags::HOST_ACCESS_SEQUENTIAL_WRITE,
+            required_flags: vk::MemoryPropertyFlags::HOST_VISIBLE,
+            preferred_flags: vk::MemoryPropertyFlags::HOST_COHERENT
+                | vk::MemoryPropertyFlags::HOST_CACHED,
+            ..Default::default()
         };
-        if memory_type_index == 0 {
-            panic!("Failed to find Vulkan memory type index");
-        }
 
-        let mem_allocate_info = vk::MemoryAllocateInfo::default()
-            .allocation_size(requirements.size)
-            .memory_type_index(memory_type_index);
-        let memory = unsafe { dev.device.allocate_memory(&mem_allocate_info, None) }
-            .expect("Failed to allocate Vulkan memory");
+        let (buffer, allocation) = unsafe { allocator.create_buffer(&buffer_info, &create_info) }
+            .expect("Failed to create Vulkan buffer");
 
-        let offset = vk::DeviceSize::default();
-        unsafe { dev.device.bind_buffer_memory(buffer, memory, offset) }
-            .expect("Failed to bind Vulkan memory to buffer");
+        (buffer, allocation)
+    }
+
+    pub fn new(allocator: &Rc<vk_mem::Allocator>) -> Self {
+        // Default size allows for 3 vertices
+        let size = std::mem::size_of::<Vertex>() as vk::DeviceSize * 3;
+
+        let (buffer, allocation) = Self::create_buffer(allocator, size);
 
         Self {
-            memory,
+            allocation,
             buffer,
             size,
-            device: Rc::clone(&dev.device),
+            allocator: allocator.clone(),
         }
     }
 
-    pub fn upload<T>(&mut self, src: *const T, size: usize) {
-        let device_size = vk::DeviceSize::from(self.size);
-        let flags = vk::MemoryMapFlags::default();
-        let data = unsafe { self.device.map_memory(self.memory, 0, device_size, flags) }
+    pub fn upload<T>(&mut self, src: *const T, size: vk::DeviceSize) {
+        let data = unsafe { self.allocator.map_memory(&mut self.allocation) }
             .expect("Failed to map Vulkan memory");
+        unsafe { data.copy_from(src as _, size as usize) };
+        unsafe { self.allocator.unmap_memory(&mut self.allocation) };
+    }
 
-        unsafe {
-            data.copy_from(src as _, size);
-            self.device.unmap_memory(self.memory);
+    pub fn upload_arr<T>(&mut self, arr: &[T]) {
+        // Create a new buffer if not enough size for the vector
+        let size = std::mem::size_of_val(arr) as vk::DeviceSize;
+        if size as vk::DeviceSize != self.size {
+            unsafe {
+                self.allocator
+                    .destroy_buffer(self.buffer, &mut self.allocation)
+            };
+
+            self.size = size;
+            let (buffer, allocation) = Self::create_buffer(&self.allocator, size);
+            self.buffer = buffer;
+            self.allocation = allocation;
         }
+
+        self.upload(arr.as_ptr(), size);
     }
 }
 
 impl Drop for Buffer {
     fn drop(&mut self) {
         unsafe {
-            self.device
-                .device_wait_idle()
-                .expect("Failed to wait for the device");
-            self.device.free_memory(self.memory, None);
-            self.device.destroy_buffer(self.buffer, None);
-        }
+            self.allocator
+                .destroy_buffer(self.buffer, &mut self.allocation)
+        };
     }
 }

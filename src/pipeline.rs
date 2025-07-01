@@ -128,7 +128,7 @@ impl DefaultPipeline {
             set_layouts: vec![],
             layout,
             graphics,
-            device: Rc::clone(&dev.device),
+            device: dev.device.device.clone(),
             name: String::from("LegacyPipeline"),
         }
     }

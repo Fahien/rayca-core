@@ -114,7 +114,7 @@ impl Frame {
             can_wait: true,
             image_ready,
             image_drawn,
-            device: Rc::clone(&dev.device),
+            device: dev.device.device.clone(),
         }
     }
 

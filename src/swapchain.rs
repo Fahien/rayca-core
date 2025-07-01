@@ -21,7 +21,7 @@ impl Swapchain {
         let surface_capabilities = unsafe {
             surface
                 .ext
-                .get_physical_device_surface_capabilities(dev.physical, surface.surface)
+                .get_physical_device_surface_capabilities(dev.device.physical, surface.surface)
         }
         .expect("Failed to get Vulkan physical device surface capabilities");
         println!(

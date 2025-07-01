@@ -55,7 +55,7 @@ impl Pass {
 
         Self {
             render,
-            device: Rc::clone(&dev.device),
+            device: dev.device.device.clone(),
         }
     }
 }

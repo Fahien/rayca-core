@@ -1122,13 +1122,14 @@ dependencies = [
  "raw-window-metal",
  "rayca-geometry",
  "slang",
+ "vk-mem",
  "winit",
 ]
 
 [[package]]
 name = "rayca-geometry"
 version = "0.1.0"
-source = "git+https://github.com/Fahien/rayca-geometry#a9910f46913e013cefcfb0cba9ccf1b3125faa14"
+source = "git+https://github.com/Fahien/rayca-geometry#ed51821cf8859f26d7a358bbc8f6f2c7811cf1b0"
 dependencies = [
  "rayca-math",
  "rayca-util",
@@ -1491,6 +1492,17 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
+
+[[package]]
+name = "vk-mem"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0cb12b79bcec57a3334d0284f1364c1846f378bb47df9779c6dbfcfc245c9404"
+dependencies = [
+ "ash",
+ "bitflags 2.9.1",
+ "cc",
+]
 
 [[package]]
 name = "walkdir"
