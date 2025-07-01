@@ -14,6 +14,64 @@ pub struct ShaderModule {
 }
 
 impl ShaderModule {
+    #[cfg(target_os = "android")]
+    pub fn create_shaders(
+        android_app: &AndroidApp,
+        device: &Rc<ash::Device>,
+        vert_path: &str,
+        frag_path: &str,
+    ) -> (Self, Self) {
+        use std::{ffi::CString, str::FromStr};
+
+        let vert_path = vert_path.replace(".slang", ".spv");
+        let frag_path = frag_path.replace(".slang", ".spv");
+
+        let c_vert_path =
+            CString::from_str(&vert_path).expect("Failed to create CStr for vertex shader path");
+        let c_frag_path =
+            CString::from_str(&frag_path).expect("Failed to create CStr for fragment shader path");
+
+        let msg = format!("Failed to open shader: {}", vert_path);
+        let mut vert_asset = android_app
+            .asset_manager()
+            .open(c_vert_path.as_c_str())
+            .expect(&msg);
+
+        let msg = format!("Failed to open shader: {}", frag_path);
+        let mut frag_asset = android_app
+            .asset_manager()
+            .open(c_frag_path.as_c_str())
+            .expect(&msg);
+
+        let vert_data = vert_asset
+            .buffer()
+            .expect("Failed to read vertex shader data");
+
+        let frag_data = frag_asset
+            .buffer()
+            .expect("Failed to read fragment shader data");
+
+        (
+            Self::from_data(device, vert_data),
+            Self::from_data(device, frag_data),
+        )
+    }
+
+    #[cfg(not(target_os = "android"))]
+    pub fn create_shaders(
+        device: &Rc<ash::Device>,
+        vert_path: &str,
+        frag_path: &str,
+    ) -> (Self, Self) {
+        let vert_data = SlangProgram::get_entry_point_code(vert_path, "main").unwrap();
+        let frag_data = SlangProgram::get_entry_point_code(frag_path, "main").unwrap();
+
+        (
+            Self::from_data(device, &vert_data),
+            Self::from_data(device, &frag_data),
+        )
+    }
+
     pub fn new(device: &Rc<ash::Device>, shader_module: vk::ShaderModule) -> Self {
         Self {
             shader: shader_module,
