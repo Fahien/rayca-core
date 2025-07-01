@@ -14,7 +14,12 @@ pub trait Pipeline: Any {
     fn get_set_layouts(&self) -> &[vk::DescriptorSetLayout];
     fn get_layout(&self) -> vk::PipelineLayout;
     fn get_pipeline(&self) -> vk::Pipeline;
-    fn draw(&self, frame: &Frame, buffer: &Buffer);
+}
+
+pub trait RenderPipeline: Pipeline {
+    /// This needs to be manually implemented, as the generator does not know where to
+    /// find the various buffers to bind and in which order and frequency to bind them
+    fn render(&self, frame: &Frame, buffer: &Buffer);
 }
 
 pub struct DefaultPipeline {
@@ -149,8 +154,10 @@ impl Pipeline for DefaultPipeline {
     fn get_pipeline(&self) -> vk::Pipeline {
         self.graphics
     }
+}
 
-    fn draw(&self, frame: &Frame, buffer: &Buffer) {
+impl RenderPipeline for DefaultPipeline {
+    fn render(&self, frame: &Frame, buffer: &Buffer) {
         let graphics_bind_point = vk::PipelineBindPoint::GRAPHICS;
         unsafe {
             self.device.cmd_bind_pipeline(
