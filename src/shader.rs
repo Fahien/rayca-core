@@ -21,39 +21,15 @@ impl ShaderModule {
         vert_path: &str,
         frag_path: &str,
     ) -> (Self, Self) {
-        use std::{ffi::CString, str::FromStr};
-
         let vert_path = vert_path.replace(".slang", ".spv");
         let frag_path = frag_path.replace(".slang", ".spv");
 
-        let c_vert_path =
-            CString::from_str(&vert_path).expect("Failed to create CStr for vertex shader path");
-        let c_frag_path =
-            CString::from_str(&frag_path).expect("Failed to create CStr for fragment shader path");
-
-        let msg = format!("Failed to open shader: {}", vert_path);
-        let mut vert_asset = android_app
-            .asset_manager()
-            .open(c_vert_path.as_c_str())
-            .expect(&msg);
-
-        let msg = format!("Failed to open shader: {}", frag_path);
-        let mut frag_asset = android_app
-            .asset_manager()
-            .open(c_frag_path.as_c_str())
-            .expect(&msg);
-
-        let vert_data = vert_asset
-            .buffer()
-            .expect("Failed to read vertex shader data");
-
-        let frag_data = frag_asset
-            .buffer()
-            .expect("Failed to read fragment shader data");
+        let vert_data = Asset::load(android_app, vert_path).data;
+        let frag_data = Asset::load(android_app, frag_path).data;
 
         (
-            Self::from_data(device, vert_data),
-            Self::from_data(device, frag_data),
+            Self::from_data(device, &vert_data),
+            Self::from_data(device, &frag_data),
         )
     }
 

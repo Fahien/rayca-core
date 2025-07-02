@@ -2,6 +2,8 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
+mod asset;
+pub use asset::*;
 mod buffer;
 pub use buffer::*;
 mod ctx;

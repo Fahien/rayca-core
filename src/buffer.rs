@@ -59,9 +59,7 @@ impl Buffer {
     }
 
     /// Loads data from a png image in `path` directly into a staging buffer
-    pub fn load<R: std::io::Read>(allocator: &Rc<vk_mem::Allocator>, read: R) -> Self {
-        let mut png = Png::new(read);
-
+    pub fn load<R: std::io::Read>(allocator: &Rc<vk_mem::Allocator>, png: &mut Png<R>) -> Self {
         let size = png.reader.output_buffer_size();
         let usage = vk::BufferUsageFlags::TRANSFER_SRC;
 
