@@ -88,8 +88,7 @@ pub struct FrameCache {
     pub uniforms: HashMap<Handle<Node>, Buffer>,
     pub descriptors: Descriptors,
     pub command_buffer: vk::CommandBuffer,
-    pub fence: vk::Fence,
-    pub can_wait: bool,
+    pub fence: Fence,
     pub image_ready: Semaphore,
     pub image_drawn: Semaphore,
     pub device: Rc<ash::Device>,
@@ -109,19 +108,11 @@ impl FrameCache {
             buffers[0]
         };
 
-        // Fence (device)
-        let fence = {
-            let create_info = vk::FenceCreateInfo::default().flags(vk::FenceCreateFlags::SIGNALED);
-            unsafe { dev.device.create_fence(&create_info, None) }
-        }
-        .expect("Failed to create Vulkan fence");
-
         Self {
             uniforms: HashMap::new(),
             descriptors: Descriptors::new(&dev.device),
             command_buffer,
-            fence,
-            can_wait: true,
+            fence: Fence::signaled(&dev.device.device),
             image_ready: Semaphore::new(&dev.device.device),
             image_drawn: Semaphore::new(&dev.device.device),
             device: dev.device.device.clone(),
@@ -129,25 +120,10 @@ impl FrameCache {
     }
 
     pub fn wait(&mut self) {
-        if !self.can_wait {
-            return;
+        if self.fence.can_wait {
+            self.fence.wait();
+            self.fence.reset();
         }
-
-        unsafe {
-            self.device
-                .wait_for_fences(&[self.fence], true, u64::MAX)
-                .expect("Failed to wait for Vulkan frame fence");
-            self.device
-                .reset_fences(&[self.fence])
-                .expect("Failed to reset Vulkan frame fence");
-        }
-        self.can_wait = false;
-    }
-}
-
-impl Drop for FrameCache {
-    fn drop(&mut self) {
-        unsafe { self.device.destroy_fence(self.fence, None) }
     }
 }
 
@@ -273,11 +249,11 @@ impl Frame {
             .signal_semaphores(&signal_semaphores)];
         unsafe {
             self.device
-                .queue_submit(dev.graphics_queue, &submits, self.cache.fence)
+                .queue_submit(dev.graphics_queue, &submits, self.cache.fence.fence)
         }
         .expect("Failed to submit to Vulkan queue");
 
-        self.cache.can_wait = true;
+        self.cache.fence.can_wait = true;
 
         // Present result
         let pres_image_indices = [image_index];
