@@ -26,9 +26,9 @@ pub trait Pipeline: Any {
         }
     }
 
-    fn draw(&self, cache: &FrameCache, vertex_buffer: &Buffer) {
+    fn draw(&self, cache: &FrameCache, primitive: &RenderPrimitive) {
         let first_binding = 0;
-        let buffers = [vertex_buffer.buffer];
+        let buffers = [primitive.vertices.buffer];
         let offsets = [vk::DeviceSize::default()];
         unsafe {
             cache.device.cmd_bind_vertex_buffers(
@@ -39,11 +39,29 @@ pub trait Pipeline: Any {
             );
         }
 
-        let vertex_count = vertex_buffer.size as u32 / self.get_vertex_size() as u32;
-        unsafe {
-            cache
-                .device
-                .cmd_draw(cache.command_buffer, vertex_count, 1, 0, 0);
+        if let Some(indices) = &primitive.indices {
+            // Draw indexed if primitive has indices
+            unsafe {
+                cache.device.cmd_bind_index_buffer(
+                    cache.command_buffer,
+                    indices.buffer,
+                    0,
+                    vk::IndexType::UINT16,
+                );
+            }
+            let index_count = indices.size as u32 / std::mem::size_of::<u16>() as u32;
+            unsafe {
+                cache
+                    .device
+                    .cmd_draw_indexed(cache.command_buffer, index_count, 1, 0, 0, 0);
+            }
+        } else {
+            // Draw without indices
+            unsafe {
+                cache
+                    .device
+                    .cmd_draw(cache.command_buffer, primitive.vertex_count, 1, 0, 0);
+            }
         }
     }
 }
@@ -282,7 +300,7 @@ impl RenderPipeline for DefaultPipeline {
             self.bind_model_buffer(&mut frame.cache, model, node_handle);
             let node = model.gltf.nodes.get(node_handle).unwrap();
             let mesh = model.gltf.meshes.get(node.mesh).unwrap();
-            let vertex_buffer = &model.vertex_buffers.get(mesh.primitive.id.into()).unwrap();
+            let vertex_buffer = &model.primitives.get(mesh.primitive.id.into()).unwrap();
             self.draw(&frame.cache, vertex_buffer);
         }
     }

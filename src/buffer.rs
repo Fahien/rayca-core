@@ -14,7 +14,7 @@ pub struct Buffer {
     pub buffer: vk::Buffer,
     usage: vk::BufferUsageFlags,
     pub size: vk::DeviceSize,
-    allocator: Rc<vk_mem::Allocator>,
+    pub allocator: Rc<vk_mem::Allocator>,
 }
 
 impl Buffer {

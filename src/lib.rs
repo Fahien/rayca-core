@@ -28,6 +28,8 @@ mod pass;
 pub use pass::*;
 mod pipeline;
 pub use pipeline::*;
+mod primitive;
+pub use primitive::*;
 #[cfg(not(target_os = "android"))]
 mod slang;
 #[cfg(not(target_os = "android"))]

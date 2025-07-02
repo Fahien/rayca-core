@@ -18,7 +18,7 @@ pub trait VertexInput {
 
 impl VertexInput for LineVertex {
     fn get_topology() -> vk::PrimitiveTopology {
-        vk::PrimitiveTopology::LINE_LIST
+        vk::PrimitiveTopology::LINE_STRIP
     }
 
     fn get_bindings() -> Vec<vk::VertexInputBindingDescription> {
@@ -75,14 +75,14 @@ impl VertexInput for Vertex {
 // Model representation useful for the renderer
 pub struct RenderModel {
     pub gltf: Model,
-    pub vertex_buffers: Pack<Buffer>,
+    pub primitives: Pack<RenderPrimitive>,
 }
 
 impl Default for RenderModel {
     fn default() -> Self {
         Self {
             gltf: Default::default(),
-            vertex_buffers: Pack::new(),
+            primitives: Pack::new(),
         }
     }
 }
