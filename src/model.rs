@@ -72,9 +72,13 @@ impl VertexInput for Vertex {
     }
 }
 
-// Model representation useful for the renderer
+/// Model representation useful for the renderer
 pub struct RenderModel {
     pub gltf: Model,
+    pub images: Pack<Image>,
+    pub views: Pack<ImageView>,
+    pub samplers: Pack<Sampler>,
+    pub textures: Pack<Texture>,
     pub primitives: Pack<RenderPrimitive>,
 }
 
@@ -82,6 +86,10 @@ impl Default for RenderModel {
     fn default() -> Self {
         Self {
             gltf: Default::default(),
+            images: Pack::new(),
+            views: Pack::new(),
+            samplers: Pack::new(),
+            textures: Pack::new(),
             primitives: Pack::new(),
         }
     }
