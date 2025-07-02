@@ -40,6 +40,8 @@ mod swapchain;
 pub use swapchain::*;
 mod shader;
 pub use shader::*;
+mod sync;
+pub use sync::*;
 
 pub use ash;
 pub use ash::vk;

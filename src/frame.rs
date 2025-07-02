@@ -1,4 +1,4 @@
-// Copyright © 2021-2024
+// Copyright © 2021-2025
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
@@ -21,7 +21,7 @@ pub struct Framebuffer {
 }
 
 impl Framebuffer {
-    pub fn new(dev: &mut Dev, image: &Image, pass: &Pass) -> Self {
+    pub fn new(device: &Rc<ash::Device>, image: &Image, pass: &Pass) -> Self {
         // Image view into a swapchain images (device, image, format)
         let image_view = {
             let create_info = vk::ImageViewCreateInfo::default()
@@ -43,7 +43,7 @@ impl Framebuffer {
                         .base_array_layer(0)
                         .layer_count(1),
                 );
-            unsafe { dev.device.create_image_view(&create_info, None) }
+            unsafe { device.create_image_view(&create_info, None) }
                 .expect("Failed to create Vulkan image view")
         };
 
@@ -58,7 +58,7 @@ impl Framebuffer {
                 .height(image.height)
                 .layers(1);
 
-            unsafe { dev.device.create_framebuffer(&create_info, None) }
+            unsafe { device.create_framebuffer(&create_info, None) }
                 .expect("Failed to create Vulkan framebuffer")
         };
 
@@ -75,7 +75,7 @@ impl Framebuffer {
             area,
             framebuffer,
             image_view,
-            device: dev.device.device.clone(),
+            device: device.clone(),
         }
     }
 }
@@ -101,8 +101,8 @@ pub struct FrameCache {
     pub command_buffer: vk::CommandBuffer,
     pub fence: vk::Fence,
     pub can_wait: bool,
-    pub image_ready: vk::Semaphore,
-    pub image_drawn: vk::Semaphore,
+    pub image_ready: Semaphore,
+    pub image_drawn: Semaphore,
     pub device: Rc<ash::Device>,
 }
 
@@ -127,29 +127,14 @@ impl FrameCache {
         }
         .expect("Failed to create Vulkan fence");
 
-        // Semaphores (device)
-        let (image_ready, image_drawn) = {
-            let create_info = vk::SemaphoreCreateInfo::default();
-            unsafe {
-                (
-                    dev.device
-                        .create_semaphore(&create_info, None)
-                        .expect("Failed to create Vulkan semaphore"),
-                    dev.device
-                        .create_semaphore(&create_info, None)
-                        .expect("Failed to create Vulkan semaphore"),
-                )
-            }
-        };
-
         Self {
             uniforms: HashMap::new(),
             descriptors: Descriptors::new(&dev.device),
             command_buffer,
             fence,
             can_wait: true,
-            image_ready,
-            image_drawn,
+            image_ready: Semaphore::new(&dev.device.device),
+            image_drawn: Semaphore::new(&dev.device.device),
             device: dev.device.device.clone(),
         }
     }
@@ -173,11 +158,7 @@ impl FrameCache {
 
 impl Drop for FrameCache {
     fn drop(&mut self) {
-        unsafe {
-            self.device.destroy_semaphore(self.image_drawn, None);
-            self.device.destroy_semaphore(self.image_ready, None);
-            self.device.destroy_fence(self.fence, None)
-        }
+        unsafe { self.device.destroy_fence(self.fence, None) }
     }
 }
 
@@ -191,8 +172,8 @@ pub struct Frame {
 }
 
 impl Frame {
-    pub fn new(dev: &mut Dev, image: &Image, pass: &Pass) -> Self {
-        let buffer = Framebuffer::new(dev, image, pass);
+    pub fn new(dev: &Dev, image: &Image, pass: &Pass) -> Self {
+        let buffer = Framebuffer::new(&dev.device.device, image, pass);
         let cache = FrameCache::new(dev);
 
         Frame {
@@ -242,6 +223,7 @@ impl Frame {
                 .cmd_begin_render_pass(self.cache.command_buffer, &create_info, contents)
         };
     }
+
     pub fn draw(&mut self, model: &RenderModel, pipelines: &[Box<dyn RenderPipeline>]) {
         for node_handle in model.gltf.scene.iter().cloned() {
             let node = model.gltf.nodes.get(node_handle).unwrap();
@@ -269,11 +251,11 @@ impl Frame {
         image_index: u32,
     ) -> Result<(), vk::Result> {
         // Wait for the image to be available ..
-        let wait_semaphores = [self.cache.image_ready];
+        let wait_semaphores = [self.cache.image_ready.semaphore];
         // .. at color attachment output stage
         let wait_dst_stage_mask = [vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT];
         let command_buffers = [self.cache.command_buffer];
-        let signal_semaphores = [self.cache.image_drawn];
+        let signal_semaphores = [self.cache.image_drawn.semaphore];
         let submits = [vk::SubmitInfo::default()
             .wait_semaphores(&wait_semaphores)
             .wait_dst_stage_mask(&wait_dst_stage_mask)
@@ -290,7 +272,7 @@ impl Frame {
         // Present result
         let pres_image_indices = [image_index];
         let pres_swapchains = [swapchain.swapchain];
-        let pres_semaphores = [self.cache.image_drawn];
+        let pres_semaphores = [self.cache.image_drawn.semaphore];
         let present_info = vk::PresentInfoKHR::default()
             .image_indices(&pres_image_indices)
             .swapchains(&pres_swapchains)
@@ -301,7 +283,9 @@ impl Frame {
                 .ext
                 .queue_present(dev.graphics_queue, &present_info)
         } {
-            Ok(_subotimal) => Ok(()),
+            Ok(false) => Ok(()),
+            // Suboptimal
+            Ok(true) => Err(vk::Result::ERROR_OUT_OF_DATE_KHR),
             Err(result) => Err(result),
         }
     }
@@ -384,15 +368,20 @@ impl Frames for SwapchainFrames {
             self.swapchain.ext.acquire_next_image(
                 self.swapchain.swapchain,
                 u64::MAX,
-                frame.cache.image_ready,
+                frame.cache.image_ready.semaphore,
                 vk::Fence::null(),
             )
         };
 
         match acquire_res {
-            Ok((image_index, _)) => {
+            Ok((image_index, false)) => {
                 self.image_index = image_index;
                 Ok(frame)
+            }
+            // Suboptimal
+            Ok((_, true)) => {
+                self.current = 0;
+                Err(vk::Result::ERROR_OUT_OF_DATE_KHR)
             }
             Err(result) => {
                 self.current = 0;
