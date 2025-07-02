@@ -2,6 +2,7 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
+use rayca_geometry::Size2;
 use winit::{
     application::ApplicationHandler,
     dpi::PhysicalSize,
@@ -15,7 +16,7 @@ use winit::platform::android::activity::AndroidApp;
 
 pub struct WinBuilder {
     title: String,
-    size: PhysicalSize<u32>,
+    size: Size2,
     #[cfg(target_os = "android")]
     app: Option<AndroidApp>,
 }
@@ -24,7 +25,7 @@ impl Default for WinBuilder {
     fn default() -> Self {
         Self {
             title: "Rayca".into(),
-            size: PhysicalSize::new(480, 480),
+            size: Size2::new(480, 480),
             #[cfg(target_os = "android")]
             app: None,
         }
@@ -37,7 +38,7 @@ impl WinBuilder {
         self
     }
 
-    pub fn size(mut self, size: PhysicalSize<u32>) -> Self {
+    pub fn size(mut self, size: Size2) -> Self {
         self.size = size;
         self
     }
@@ -71,7 +72,7 @@ pub struct Win {
     #[cfg(target_os = "android")]
     pub android_app: AndroidApp,
 
-    pub size: PhysicalSize<u32>,
+    pub size: Size2,
 
     window_id: Option<WindowId>,
     pub window: Option<Window>,
@@ -86,7 +87,7 @@ impl Win {
     }
 
     #[cfg(not(target_os = "android"))]
-    pub fn new<S: Into<String>>(name: S, size: PhysicalSize<u32>) -> Self {
+    pub fn new<S: Into<String>>(name: S, size: Size2) -> Self {
         Self {
             name: name.into(),
             size,
@@ -98,7 +99,7 @@ impl Win {
     }
 
     #[cfg(target_os = "android")]
-    pub fn new<S: Into<String>>(name: S, size: PhysicalSize<u32>, android_app: AndroidApp) -> Self {
+    pub fn new<S: Into<String>>(name: S, size: Size2, android_app: AndroidApp) -> Self {
         Self {
             name: name.into(),
             android_app,
@@ -148,7 +149,8 @@ impl ApplicationHandler for Win {
             WindowEvent::RedrawRequested => {}
             WindowEvent::Resized(physical_size) => {
                 self.resized = true;
-                self.size = physical_size;
+                self.size.width = physical_size.width;
+                self.size.height = physical_size.height;
             }
             _ => (),
         }

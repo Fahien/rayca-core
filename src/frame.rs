@@ -13,7 +13,6 @@ use super::*;
 /// This is the one that is going to be recreated
 /// when the swapchain goes out of date
 pub struct Framebuffer {
-    pub area: vk::Rect2D,
     // @todo Make a map of framebuffers indexed by render-pass as key
     pub framebuffer: vk::Framebuffer,
     pub image_view: vk::ImageView,
@@ -62,17 +61,7 @@ impl Framebuffer {
                 .expect("Failed to create Vulkan framebuffer")
         };
 
-        // Needed by cmd_begin_render_pass
-        let area = vk::Rect2D::default()
-            .offset(vk::Offset2D::default().x(0).y(0))
-            .extent(
-                vk::Extent2D::default()
-                    .width(image.width)
-                    .height(image.height),
-            );
-
         Self {
-            area,
             framebuffer,
             image_view,
             device: device.clone(),
@@ -200,7 +189,7 @@ impl Frame {
         }
     }
 
-    pub fn begin(&self, pass: &Pass) {
+    pub fn begin(&self, pass: &Pass, area: Size2) {
         let begin_info = vk::CommandBufferBeginInfo::default();
         unsafe {
             self.device
@@ -214,7 +203,10 @@ impl Frame {
         let create_info = vk::RenderPassBeginInfo::default()
             .framebuffer(self.buffer.framebuffer)
             .render_pass(pass.render)
-            .render_area(self.buffer.area)
+            .render_area(vk::Rect2D::default().extent(vk::Extent2D {
+                width: area.width,
+                height: area.height,
+            }))
             .clear_values(&clear_values);
         // Record it in the main command buffer
         let contents = vk::SubpassContents::INLINE;
@@ -222,6 +214,24 @@ impl Frame {
             self.device
                 .cmd_begin_render_pass(self.cache.command_buffer, &create_info, contents)
         };
+
+        let viewports = [vk::Viewport::default()
+            .width(area.width as f32)
+            .height(area.height as f32)];
+        unsafe {
+            self.device
+                .cmd_set_viewport(self.cache.command_buffer, 0, &viewports)
+        };
+
+        let scissors = [vk::Rect2D::default().extent(
+            vk::Extent2D::default()
+                .width(area.width)
+                .height(area.height),
+        )];
+        unsafe {
+            self.device
+                .cmd_set_scissor(self.cache.command_buffer, 0, &scissors)
+        }
     }
 
     pub fn draw(&mut self, model: &RenderModel, pipelines: &[Box<dyn RenderPipeline>]) {
