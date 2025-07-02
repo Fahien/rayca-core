@@ -24,7 +24,7 @@ impl Vkr {
 pub struct Dev {
     pub surface_format: vk::SurfaceFormatKHR,
     pub graphics_command_pool: vk::CommandPool,
-    pub graphics_queue: vk::Queue,
+    pub graphics_queue: Queue,
     /// Needs to be public if we want to create buffers outside this module.
     /// The allocator is shared between the various buffers to release resources on drop.
     pub allocator: Rc<vk_mem::Allocator>,
@@ -35,7 +35,7 @@ impl Dev {
     pub fn new(ctx: &Ctx, surface: Option<&Surface>) -> Self {
         let device = Device::new(&ctx.instance, surface);
 
-        let graphics_queue = unsafe { device.get_device_queue(device.graphics_queue_index, 0) };
+        let graphics_queue = Queue::new(&device);
 
         // Command pool
         let create_info = vk::CommandPoolCreateInfo::default()

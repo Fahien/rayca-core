@@ -30,6 +30,8 @@ mod pipeline;
 pub use pipeline::*;
 mod primitive;
 pub use primitive::*;
+mod queue;
+pub use queue::*;
 #[cfg(not(target_os = "android"))]
 mod slang;
 #[cfg(not(target_os = "android"))]
