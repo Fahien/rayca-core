@@ -244,6 +244,43 @@ impl Drop for Image {
     }
 }
 
+pub struct ImageView {
+    pub view: vk::ImageView,
+    device: Rc<ash::Device>,
+}
+
+impl ImageView {
+    pub fn new(device: &Rc<ash::Device>, image: &Image) -> Self {
+        let device = device.clone();
+
+        let create_info = vk::ImageViewCreateInfo::default()
+            .image(image.image)
+            .view_type(vk::ImageViewType::TYPE_2D)
+            .format(image.format)
+            .subresource_range(
+                vk::ImageSubresourceRange::default()
+                    .aspect_mask(vk::ImageAspectFlags::COLOR)
+                    .base_mip_level(0)
+                    .level_count(1)
+                    .base_array_layer(0)
+                    .layer_count(1),
+            );
+
+        let view = unsafe { device.create_image_view(&create_info, None) }
+            .expect("Failed to create Vulkan image view");
+
+        Self { view, device }
+    }
+}
+
+impl Drop for ImageView {
+    fn drop(&mut self) {
+        unsafe {
+            self.device.destroy_image_view(self.view, None);
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct Texture {
     pub view: vk::ImageView,
