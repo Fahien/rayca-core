@@ -14,6 +14,7 @@ pub trait Pipeline: Any {
     fn get_layout(&self) -> vk::PipelineLayout;
     fn get_pipeline(&self) -> vk::Pipeline;
     fn get_device(&self) -> &ash::Device;
+    fn get_vertex_size(&self) -> usize;
 
     fn bind(&self, cache: &FrameCache) {
         unsafe {
@@ -38,7 +39,7 @@ pub trait Pipeline: Any {
             );
         }
 
-        let vertex_count = vertex_buffer.size as u32 / std::mem::size_of::<Vertex>() as u32;
+        let vertex_count = vertex_buffer.size as u32 / self.get_vertex_size() as u32;
         unsafe {
             cache
                 .device
@@ -59,6 +60,7 @@ pub trait PipelinePool {
 }
 
 pub struct DefaultPipeline {
+    vertex_size: usize,
     set_layouts: Vec<vk::DescriptorSetLayout>,
     layout: vk::PipelineLayout,
     pub graphics: vk::Pipeline,
@@ -175,6 +177,7 @@ impl DefaultPipeline {
         };
 
         Self {
+            vertex_size: std::mem::size_of::<V>(),
             set_layouts,
             layout,
             graphics,
@@ -265,6 +268,10 @@ impl Pipeline for DefaultPipeline {
 
     fn get_device(&self) -> &ash::Device {
         &self.device
+    }
+
+    fn get_vertex_size(&self) -> usize {
+        self.vertex_size
     }
 }
 

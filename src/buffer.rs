@@ -72,7 +72,7 @@ impl Buffer {
     pub fn upload_arr<T>(&mut self, arr: &[T]) {
         // Create a new buffer if not enough size for the vector
         let size = std::mem::size_of_val(arr) as vk::DeviceSize;
-        if size as vk::DeviceSize != self.size {
+        if size != self.size {
             unsafe {
                 self.allocator
                     .destroy_buffer(self.buffer, &mut self.allocation)
