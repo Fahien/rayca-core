@@ -53,8 +53,8 @@ impl Framebuffer {
             let create_info = vk::FramebufferCreateInfo::default()
                 .render_pass(pass.render)
                 .attachments(&attachments)
-                .width(image.width)
-                .height(image.height)
+                .width(image.extent.width)
+                .height(image.extent.height)
                 .layers(1);
 
             unsafe { device.create_framebuffer(&create_info, None) }
