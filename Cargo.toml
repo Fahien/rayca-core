@@ -13,6 +13,7 @@ ash = "0.38.*"
 rayca-geometry = { git = "https://github.com/Fahien/rayca-geometry" }
 rayca-gltf = { git = "https://github.com/Fahien/rayca-gltf" }
 vk-mem = "0.4.*"
+png = "0.17.*"
 
 [target.'cfg(not(target_os="android"))'.dependencies]
 slang = { git = "https://github.com/Fahien/slang-rs" }

@@ -58,6 +58,38 @@ impl Buffer {
         }
     }
 
+    /// Loads data from a png image in `path` directly into a staging buffer
+    pub fn load<R: std::io::Read>(allocator: &Rc<vk_mem::Allocator>, read: R) -> Self {
+        let decoder = png::Decoder::new(read);
+        let mut reader = decoder.read_info().unwrap();
+
+        let size = reader.output_buffer_size();
+        let usage = vk::BufferUsageFlags::TRANSFER_SRC;
+
+        // Create staging buffer
+        let (buffer, mut allocation) =
+            Self::create_buffer(allocator, size as vk::DeviceSize, usage);
+
+        let data =
+            unsafe { allocator.map_memory(&mut allocation) }.expect("Failed to map Vulkan memory");
+
+        // Allocate the output buffer
+        let buf = unsafe { std::slice::from_raw_parts_mut(data, size) };
+
+        // Read the next frame. An APNG might contain multiple frames.
+        reader.next_frame(buf).unwrap();
+
+        unsafe { allocator.unmap_memory(&mut allocation) };
+
+        Self {
+            allocation,
+            buffer,
+            usage,
+            size: size as vk::DeviceSize,
+            allocator: allocator.clone(),
+        }
+    }
+
     pub fn upload<T>(&mut self, data: &T) {
         self.upload_raw(data as *const T, std::mem::size_of::<T>() as vk::DeviceSize);
     }
