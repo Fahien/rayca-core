@@ -4,9 +4,20 @@
 
 use std::rc::Rc;
 
-use ash::vk;
-
 use super::*;
+
+pub struct Png<R: std::io::Read> {
+    pub reader: png::Reader<R>,
+}
+
+impl<R: std::io::Read> Png<R> {
+    /// Creates a png decoder without loading data yet
+    pub fn new(read: R) -> Self {
+        let decoder = png::Decoder::new(read);
+        let reader = decoder.read_info().unwrap();
+        Self { reader }
+    }
+}
 
 pub struct Image {
     /// Whether this image is manages and should be freed, or not (like swapchain images)
@@ -114,19 +125,21 @@ impl Image {
             let src_stage_mask = vk::PipelineStageFlags::TOP_OF_PIPE;
             let dst_stage_mask = vk::PipelineStageFlags::TRANSFER;
             let dependency_flags = vk::DependencyFlags::default();
-            let image_memory_barriers = vec![vk::ImageMemoryBarrier::default()
-                .old_layout(self.layout)
-                .new_layout(new_layout)
-                .image(self.image)
-                .subresource_range(
-                    vk::ImageSubresourceRange::default()
-                        .aspect_mask(vk::ImageAspectFlags::COLOR)
-                        .base_mip_level(0)
-                        .level_count(1)
-                        .base_array_layer(0)
-                        .layer_count(1),
-                )
-                .dst_access_mask(vk::AccessFlags::TRANSFER_WRITE)];
+            let image_memory_barriers = vec![
+                vk::ImageMemoryBarrier::default()
+                    .old_layout(self.layout)
+                    .new_layout(new_layout)
+                    .image(self.image)
+                    .subresource_range(
+                        vk::ImageSubresourceRange::default()
+                            .aspect_mask(vk::ImageAspectFlags::COLOR)
+                            .base_mip_level(0)
+                            .level_count(1)
+                            .base_array_layer(0)
+                            .layer_count(1),
+                    )
+                    .dst_access_mask(vk::AccessFlags::TRANSFER_WRITE),
+            ];
             dev.device.cmd_pipeline_barrier(
                 command_buffer,
                 src_stage_mask,
@@ -143,13 +156,15 @@ impl Image {
         // Copy
         unsafe {
             let dst_image_layout = self.layout;
-            let regions = vec![vk::BufferImageCopy::default()
-                .image_subresource(
-                    vk::ImageSubresourceLayers::default()
-                        .aspect_mask(vk::ImageAspectFlags::COLOR)
-                        .layer_count(1),
-                )
-                .image_extent(self.extent)];
+            let regions = vec![
+                vk::BufferImageCopy::default()
+                    .image_subresource(
+                        vk::ImageSubresourceLayers::default()
+                            .aspect_mask(vk::ImageAspectFlags::COLOR)
+                            .layer_count(1),
+                    )
+                    .image_extent(self.extent),
+            ];
             dev.device.cmd_copy_buffer_to_image(
                 command_buffer,
                 staging.buffer,
@@ -166,20 +181,22 @@ impl Image {
             let src_stage_mask = vk::PipelineStageFlags::TRANSFER;
             let dst_stage_mask = vk::PipelineStageFlags::FRAGMENT_SHADER;
             let dependency_flags = vk::DependencyFlags::default();
-            let image_memory_barriers = vec![vk::ImageMemoryBarrier::default()
-                .old_layout(self.layout)
-                .new_layout(new_layout)
-                .image(self.image)
-                .subresource_range(
-                    vk::ImageSubresourceRange::default()
-                        .aspect_mask(vk::ImageAspectFlags::COLOR)
-                        .base_mip_level(0)
-                        .level_count(1)
-                        .base_array_layer(0)
-                        .layer_count(1),
-                )
-                .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
-                .dst_access_mask(vk::AccessFlags::SHADER_READ)];
+            let image_memory_barriers = vec![
+                vk::ImageMemoryBarrier::default()
+                    .old_layout(self.layout)
+                    .new_layout(new_layout)
+                    .image(self.image)
+                    .subresource_range(
+                        vk::ImageSubresourceRange::default()
+                            .aspect_mask(vk::ImageAspectFlags::COLOR)
+                            .base_mip_level(0)
+                            .level_count(1)
+                            .base_array_layer(0)
+                            .layer_count(1),
+                    )
+                    .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
+                    .dst_access_mask(vk::AccessFlags::SHADER_READ),
+            ];
             dev.device.cmd_pipeline_barrier(
                 command_buffer,
                 src_stage_mask,
