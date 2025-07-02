@@ -68,6 +68,11 @@ impl VertexInput for Vertex {
                 .location(1)
                 .format(vk::Format::R32G32B32A32_SFLOAT)
                 .offset(offset_of!(Self, ext.color) as u32),
+            vk::VertexInputAttributeDescription::default()
+                .binding(0)
+                .location(2)
+                .format(vk::Format::R32G32_SFLOAT)
+                .offset(offset_of!(Self, ext.uv) as u32),
         ]
     }
 }
@@ -75,10 +80,10 @@ impl VertexInput for Vertex {
 /// Model representation useful for the renderer
 pub struct RenderModel {
     pub gltf: Model,
-    pub images: Pack<Image>,
+    pub images: Pack<RenderImage>,
     pub views: Pack<ImageView>,
-    pub samplers: Pack<Sampler>,
-    pub textures: Pack<Texture>,
+    pub samplers: Pack<RenderSampler>,
+    pub textures: Pack<RenderTexture>,
     pub primitives: Pack<RenderPrimitive>,
 }
 

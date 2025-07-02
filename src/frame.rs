@@ -20,7 +20,7 @@ pub struct Framebuffer {
 }
 
 impl Framebuffer {
-    pub fn new(device: &Rc<ash::Device>, image: &Image, pass: &Pass) -> Self {
+    pub fn new(device: &Rc<ash::Device>, image: &RenderImage, pass: &Pass) -> Self {
         // Image view into a swapchain images (device, image, format)
         let image_view = {
             let create_info = vk::ImageViewCreateInfo::default()
@@ -137,7 +137,7 @@ pub struct Frame {
 }
 
 impl Frame {
-    pub fn new(dev: &Dev, image: &Image, pass: &Pass) -> Self {
+    pub fn new(dev: &Dev, image: &RenderImage, pass: &Pass) -> Self {
         let buffer = Framebuffer::new(&dev.device.device, image, pass);
         let cache = FrameCache::new(dev);
 

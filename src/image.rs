@@ -19,7 +19,7 @@ impl<R: std::io::Read> Png<R> {
     }
 }
 
-pub struct Image {
+pub struct RenderImage {
     /// Whether this image is manages and should be freed, or not (like swapchain images)
     managed: bool,
     pub image: vk::Image,
@@ -31,7 +31,7 @@ pub struct Image {
     allocator: Option<Rc<vk_mem::Allocator>>,
 }
 
-impl Image {
+impl RenderImage {
     pub fn unmanaged(
         image: vk::Image,
         width: u32,
@@ -102,7 +102,7 @@ impl Image {
 
         let png_info = png.reader.info();
 
-        let mut image = Image::new(
+        let mut image = Self::new(
             &dev.allocator,
             png_info.width,
             png_info.height,
@@ -247,7 +247,7 @@ impl Image {
     }
 }
 
-impl Drop for Image {
+impl Drop for RenderImage {
     fn drop(&mut self) {
         if self.managed {
             if let Some(alloc) = self.allocator.as_ref() {
@@ -265,7 +265,7 @@ pub struct ImageView {
 }
 
 impl ImageView {
-    pub fn new(device: &Rc<ash::Device>, image: &Image) -> Self {
+    pub fn new(device: &Rc<ash::Device>, image: &RenderImage) -> Self {
         let device = device.clone();
 
         let create_info = vk::ImageViewCreateInfo::default()
@@ -297,13 +297,16 @@ impl Drop for ImageView {
 }
 
 #[derive(Default)]
-pub struct Texture {
+pub struct RenderTexture {
     pub view: vk::ImageView,
     pub sampler: vk::Sampler,
 }
 
-impl Texture {
-    pub fn new(view: vk::ImageView, sampler: vk::Sampler) -> Self {
-        Self { view, sampler }
+impl RenderTexture {
+    pub fn new(view: &ImageView, sampler: &RenderSampler) -> Self {
+        Self {
+            view: view.view,
+            sampler: sampler.sampler,
+        }
     }
 }

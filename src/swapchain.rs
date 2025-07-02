@@ -7,7 +7,7 @@ use ash::{khr, vk};
 use crate::*;
 
 pub struct Swapchain {
-    pub images: Vec<Image>,
+    pub images: Vec<RenderImage>,
     pub swapchain: vk::SwapchainKHR,
     pub ext: khr::swapchain::Device,
 }
@@ -52,7 +52,7 @@ impl Swapchain {
 
         let mut images = Vec::new();
         for image in swapchain_images.into_iter() {
-            images.push(Image::unmanaged(
+            images.push(RenderImage::unmanaged(
                 image,
                 width,
                 height,

@@ -6,12 +6,12 @@ use std::rc::Rc;
 
 use crate::*;
 
-pub struct Sampler {
+pub struct RenderSampler {
     pub sampler: vk::Sampler,
     device: Rc<ash::Device>,
 }
 
-impl Sampler {
+impl RenderSampler {
     pub fn new(device: &Rc<ash::Device>) -> Self {
         let device = device.clone();
 
@@ -39,7 +39,7 @@ impl Sampler {
     }
 }
 
-impl Drop for Sampler {
+impl Drop for RenderSampler {
     fn drop(&mut self) {
         unsafe {
             self.device.destroy_sampler(self.sampler, None);

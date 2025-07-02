@@ -23,15 +23,20 @@ pub struct Descriptors {
 impl Descriptors {
     pub fn new(device: &Device) -> Self {
         let pool = unsafe {
-            let pool_size = vk::DescriptorPoolSize::default()
-                // Just one for the moment
-                .descriptor_count(1)
+            // 2 uniform buffers, one for the line pipeline andd one for the main pipeline
+            let uniform_pool_size = vk::DescriptorPoolSize::default()
+                .descriptor_count(4)
                 .ty(vk::DescriptorType::UNIFORM_BUFFER);
-            let pool_sizes = vec![pool_size, pool_size];
+            // 1 sampler for the main pipeline
+            let sampler_pool_size = vk::DescriptorPoolSize::default()
+                .descriptor_count(2)
+                .ty(vk::DescriptorType::COMBINED_IMAGE_SAMPLER);
+
+            let pool_sizes = vec![uniform_pool_size, sampler_pool_size];
             let create_info = vk::DescriptorPoolCreateInfo::default()
                 .pool_sizes(&pool_sizes)
-                // Support 4 different pipeline layouts
-                .max_sets(2);
+                // Support 2 frames?
+                .max_sets(4);
             device.create_descriptor_pool(&create_info, None)
         }
         .expect("Failed to create Vulkan descriptor pool");
