@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: MIT
 
 use ash::vk;
-use std::rc::Rc;
+use std::{
+    collections::{HashMap, hash_map::Entry},
+    rc::Rc,
+};
 
 use super::*;
 
@@ -92,6 +95,8 @@ impl Drop for Framebuffer {
 /// Frame resources that do not need to be recreated
 /// when the swapchain goes out of date
 pub struct FrameCache {
+    /// Uniform buffers for model matrix are associated to node indices
+    pub uniforms: HashMap<Handle<Node>, Buffer>,
     pub descriptors: Descriptors,
     pub command_buffer: vk::CommandBuffer,
     pub fence: vk::Fence,
@@ -138,6 +143,7 @@ impl FrameCache {
         };
 
         Self {
+            uniforms: HashMap::new(),
             descriptors: Descriptors::new(&dev.device),
             command_buffer,
             fence,
@@ -178,7 +184,9 @@ impl Drop for FrameCache {
 pub struct Frame {
     pub buffer: Framebuffer,
     pub cache: FrameCache,
-    pub model_buffer: Buffer,
+
+    /// A frame should be able to allocate a uniform buffer on draw
+    allocator: Rc<vk_mem::Allocator>,
     pub device: Rc<ash::Device>,
 }
 
@@ -190,8 +198,24 @@ impl Frame {
         Frame {
             buffer,
             cache,
-            model_buffer: Buffer::new::<Mat4>(&dev.allocator, vk::BufferUsageFlags::UNIFORM_BUFFER),
+            allocator: dev.allocator.clone(),
             device: dev.device.device.clone(),
+        }
+    }
+
+    pub fn update(&mut self, model: &RenderModel) {
+        for node_handle in model.gltf.scene.iter().cloned() {
+            let node = model.gltf.nodes.get(node_handle).unwrap();
+
+            let uniform_buffer = match self.cache.uniforms.entry(node_handle) {
+                Entry::Vacant(e) => {
+                    let uniform_buffer =
+                        Buffer::new::<Mat4>(&self.allocator, vk::BufferUsageFlags::UNIFORM_BUFFER);
+                    e.insert(uniform_buffer)
+                }
+                Entry::Occupied(e) => e.into_mut(),
+            };
+            uniform_buffer.upload(&node.trs.to_mat4());
         }
     }
 
@@ -217,6 +241,16 @@ impl Frame {
             self.device
                 .cmd_begin_render_pass(self.cache.command_buffer, &create_info, contents)
         };
+    }
+    pub fn draw(&mut self, model: &RenderModel, pipelines: &[Box<dyn RenderPipeline>]) {
+        for node_handle in model.gltf.scene.iter().cloned() {
+            let node = model.gltf.nodes.get(node_handle).unwrap();
+            let mesh = model.gltf.meshes.get(node.mesh).unwrap();
+            let primitive = model.gltf.primitives.get(mesh.primitive).unwrap();
+            let material = model.gltf.materials.get(primitive.material).unwrap();
+            let pipeline = &pipelines[material.shader as usize];
+            pipeline.render(self, model, &[node_handle]);
+        }
     }
 
     pub fn end(&self) {

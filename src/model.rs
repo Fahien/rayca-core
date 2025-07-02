@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: MIT
 
 use ash::vk;
-use rayca_geometry::*;
 use std::mem::*;
 
 use crate::*;
@@ -70,5 +69,20 @@ impl VertexInput for Vertex {
                 .format(vk::Format::R32G32B32A32_SFLOAT)
                 .offset(offset_of!(Self, ext.color) as u32),
         ]
+    }
+}
+
+// Model representation useful for the renderer
+pub struct RenderModel {
+    pub gltf: Model,
+    pub vertex_buffers: Pack<Buffer>,
+}
+
+impl Default for RenderModel {
+    fn default() -> Self {
+        Self {
+            gltf: Default::default(),
+            vertex_buffers: Pack::new(),
+        }
     }
 }
