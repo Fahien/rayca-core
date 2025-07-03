@@ -15,12 +15,14 @@ use super::*;
 pub struct Framebuffer {
     // @todo Make a map of framebuffers indexed by render-pass as key
     pub framebuffer: vk::Framebuffer,
+    pub depth_view: ImageView,
+    pub depth_image: RenderImage,
     pub image_view: vk::ImageView,
     device: Rc<ash::Device>,
 }
 
 impl Framebuffer {
-    pub fn new(device: &Rc<ash::Device>, image: &RenderImage, pass: &Pass) -> Self {
+    pub fn new(dev: &Dev, image: &RenderImage, pass: &Pass) -> Self {
         // Image view into a swapchain images (device, image, format)
         let image_view = {
             let create_info = vk::ImageViewCreateInfo::default()
@@ -42,9 +44,20 @@ impl Framebuffer {
                         .base_array_layer(0)
                         .layer_count(1),
                 );
-            unsafe { device.create_image_view(&create_info, None) }
+            unsafe { dev.device.create_image_view(&create_info, None) }
                 .expect("Failed to create Vulkan image view")
         };
+
+        let depth_format = vk::Format::D32_SFLOAT;
+        let mut depth_image = RenderImage::new(
+            &dev.allocator,
+            image.extent.width,
+            image.extent.height,
+            depth_format,
+        );
+        depth_image.transition(dev, vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+        let depth_view = ImageView::new(&dev.device.device, &depth_image);
 
         // Framebuffers (image_view, renderpass)
         let framebuffer = {
@@ -57,14 +70,16 @@ impl Framebuffer {
                 .height(image.extent.height)
                 .layers(1);
 
-            unsafe { device.create_framebuffer(&create_info, None) }
+            unsafe { dev.device.create_framebuffer(&create_info, None) }
                 .expect("Failed to create Vulkan framebuffer")
         };
 
         Self {
             framebuffer,
+            depth_view,
+            depth_image,
             image_view,
-            device: device.clone(),
+            device: dev.device.device.clone(),
         }
     }
 }
@@ -138,7 +153,7 @@ pub struct Frame {
 
 impl Frame {
     pub fn new(dev: &Dev, image: &RenderImage, pass: &Pass) -> Self {
-        let buffer = Framebuffer::new(&dev.device.device, image, pass);
+        let buffer = Framebuffer::new(dev, image, pass);
         let cache = FrameCache::new(dev);
 
         Frame {
