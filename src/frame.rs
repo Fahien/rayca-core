@@ -178,7 +178,7 @@ impl Frame {
         .expect("Failed to begin Vulkan command buffer");
 
         let mut clear = vk::ClearValue::default();
-        clear.color.float32 = [0.025, 0.025, 0.025, 1.0];
+        clear.color.float32 = [0.0, 10.0 / 255.0, 28.0 / 255.0, 1.0];
         let clear_values = [clear];
         let create_info = vk::RenderPassBeginInfo::default()
             .framebuffer(self.buffer.framebuffer)

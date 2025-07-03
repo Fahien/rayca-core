@@ -34,4 +34,31 @@ impl RenderPrimitive {
         indices.upload_arr(ii);
         self.indices = Some(indices);
     }
+
+    /// Returns a new primitive quad with side length 1 centered at the origin
+    pub fn quad(allocator: &Rc<vk_mem::Allocator>) -> Self {
+        let vertices = vec![
+            Vertex::builder()
+                .position(Point3::new(-0.5, -0.5, 0.0))
+                .uv(Vec2::new(0.0, 1.0))
+                .build(),
+            Vertex::builder()
+                .position(Point3::new(0.5, -0.5, 0.0))
+                .uv(Vec2::new(1.0, 1.0))
+                .build(),
+            Vertex::builder()
+                .position(Point3::new(0.5, 0.5, 0.0))
+                .uv(Vec2::new(1.0, 0.0))
+                .build(),
+            Vertex::builder()
+                .position(Point3::new(-0.5, 0.5, 0.0))
+                .uv(Vec2::new(0.0, 0.0))
+                .build(),
+        ];
+        let indices = vec![0, 1, 2, 2, 3, 0];
+
+        let mut ret = Self::new(allocator, &vertices);
+        ret.set_indices(&indices);
+        ret
+    }
 }
