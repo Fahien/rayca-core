@@ -44,18 +44,35 @@ impl Buffer {
         (buffer, allocation)
     }
 
-    pub fn new<T>(allocator: &Rc<vk_mem::Allocator>, usage: vk::BufferUsageFlags) -> Self {
-        let size = std::mem::size_of::<T>() as vk::DeviceSize;
-
+    pub fn new_with_size(
+        allocator: &Rc<vk_mem::Allocator>,
+        usage: vk::BufferUsageFlags,
+        size: vk::DeviceSize,
+    ) -> Self {
         let (buffer, allocation) = Self::create_buffer(allocator, size, usage);
 
         Self {
             allocation,
             buffer,
-            usage,
             size,
+            usage,
             allocator: allocator.clone(),
         }
+    }
+
+    pub fn new<T>(allocator: &Rc<vk_mem::Allocator>, usage: vk::BufferUsageFlags) -> Self {
+        let size = std::mem::size_of::<T>() as vk::DeviceSize;
+        Self::new_with_size(allocator, usage, size)
+    }
+
+    pub fn from_data(
+        allocator: &Rc<vk_mem::Allocator>,
+        data: &[u8],
+        usage: vk::BufferUsageFlags,
+    ) -> Self {
+        let mut buffer = Self::new_with_size(allocator, usage, data.len() as vk::DeviceSize);
+        buffer.upload_arr(data);
+        buffer
     }
 
     /// Loads data from a png image in `path` directly into a staging buffer

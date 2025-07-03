@@ -120,6 +120,14 @@ impl RenderImage {
         }
     }
 
+    pub fn from_data(dev: &Dev, data: &[u8], width: u32, height: u32, format: vk::Format) -> Self {
+        let mut image = Self::new(&dev.allocator, width, height, format);
+        let usage = vk::BufferUsageFlags::TRANSFER_SRC;
+        let staging = Buffer::from_data(&dev.allocator, data, usage);
+        image.copy_from(&staging, dev);
+        image
+    }
+
     pub fn load<R: std::io::Read>(dev: &Dev, png: &mut Png<R>) -> Self {
         let staging = Buffer::load(&dev.allocator, png);
 
