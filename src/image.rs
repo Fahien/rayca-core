@@ -23,7 +23,7 @@ pub struct RenderImage {
     /// Whether this image is manages and should be freed, or not (like swapchain images)
     managed: bool,
     pub image: vk::Image,
-    layout: vk::ImageLayout,
+    pub layout: vk::ImageLayout,
     pub extent: vk::Extent3D,
     pub format: vk::Format,
     pub color_space: vk::ColorSpaceKHR,
@@ -137,211 +137,133 @@ impl RenderImage {
 
     pub fn transition(&mut self, dev: &Dev, new_layout: vk::ImageLayout) {
         // @todo Use TRANSFER pool and transfer queue?
-        let command_buffer = unsafe {
-            let alloc_info = vk::CommandBufferAllocateInfo::default()
-                .command_pool(dev.graphics_command_pool)
-                .level(vk::CommandBufferLevel::PRIMARY)
-                .command_buffer_count(1);
-            let buffers = dev
-                .device
-                .allocate_command_buffers(&alloc_info)
-                .expect("Failed to allocate Vulkan command buffer");
-            buffers[0]
-        };
-
-        unsafe {
-            let begin_info = vk::CommandBufferBeginInfo::default()
-                .flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
-            dev.device.begin_command_buffer(command_buffer, &begin_info)
-        }
-        .expect("Failed to begin Vulkan command buffer");
+        let command_buffer = CommandBuffer::new(&dev.graphics_command_pool);
+        command_buffer.begin(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
 
         // Old layout -> New layout
-        unsafe {
-            let src_stage_mask = vk::PipelineStageFlags::TOP_OF_PIPE;
-            let dst_stage_mask = vk::PipelineStageFlags::TRANSFER;
-            let dependency_flags = vk::DependencyFlags::default();
-            let image_memory_barriers = vec![
-                vk::ImageMemoryBarrier::default()
-                    .old_layout(self.layout)
-                    .new_layout(new_layout)
-                    .image(self.image)
-                    .subresource_range(
-                        vk::ImageSubresourceRange::default()
-                            .aspect_mask(Self::get_aspect_from_format(self.format))
-                            .base_mip_level(0)
-                            .level_count(1)
-                            .base_array_layer(0)
-                            .layer_count(1),
-                    )
-                    .dst_access_mask(vk::AccessFlags::TRANSFER_WRITE),
-            ];
-            dev.device.cmd_pipeline_barrier(
-                command_buffer,
-                src_stage_mask,
-                dst_stage_mask,
-                dependency_flags,
-                &[],
-                &[],
-                &image_memory_barriers,
-            );
+        let src_stage_mask = vk::PipelineStageFlags::TOP_OF_PIPE;
+        let dst_stage_mask = vk::PipelineStageFlags::TRANSFER;
+        let dependency_flags = vk::DependencyFlags::default();
+        let image_memory_barriers = vec![
+            vk::ImageMemoryBarrier::default()
+                .old_layout(self.layout)
+                .new_layout(new_layout)
+                .image(self.image)
+                .subresource_range(
+                    vk::ImageSubresourceRange::default()
+                        .aspect_mask(Self::get_aspect_from_format(self.format))
+                        .base_mip_level(0)
+                        .level_count(1)
+                        .base_array_layer(0)
+                        .layer_count(1),
+                )
+                .dst_access_mask(vk::AccessFlags::TRANSFER_WRITE),
+        ];
+        command_buffer.pipeline_barriers(
+            src_stage_mask,
+            dst_stage_mask,
+            dependency_flags,
+            &image_memory_barriers,
+        );
 
-            self.layout = new_layout;
-        }
+        self.layout = new_layout;
 
-        // End
-        unsafe {
-            dev.device
-                .end_command_buffer(command_buffer)
-                .expect("Failed to end Vulkan command buffer");
-        }
+        command_buffer.end();
 
         let mut fence = Fence::unsignaled(&dev.device.device);
 
-        let commands = [command_buffer];
+        let commands = [command_buffer.command_buffer];
         let submits = [vk::SubmitInfo::default().command_buffers(&commands)];
         dev.graphics_queue.submit(&submits, Some(&mut fence));
 
         fence.wait();
-
-        unsafe {
-            dev.device
-                .free_command_buffers(dev.graphics_command_pool, &commands);
-        }
     }
 
     pub fn copy_from(&mut self, staging: &Buffer, dev: &Dev) {
         // @todo Use TRANSFER pool and transfer queue
-        let command_buffer = unsafe {
-            let alloc_info = vk::CommandBufferAllocateInfo::default()
-                .command_pool(dev.graphics_command_pool)
-                .level(vk::CommandBufferLevel::PRIMARY)
-                .command_buffer_count(1);
-            let buffers = dev
-                .device
-                .allocate_command_buffers(&alloc_info)
-                .expect("Failed to allocate Vulkan command buffer");
-            buffers[0]
-        };
-
-        unsafe {
-            let begin_info = vk::CommandBufferBeginInfo::default()
-                .flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
-            dev.device.begin_command_buffer(command_buffer, &begin_info)
-        }
-        .expect("Failed to begin Vulkan command buffer");
+        let command_buffer = CommandBuffer::new(&dev.graphics_command_pool);
+        command_buffer.begin(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
 
         // Undefined -> Transfer dst optimal
-        unsafe {
-            let new_layout = vk::ImageLayout::TRANSFER_DST_OPTIMAL;
+        let new_layout = vk::ImageLayout::TRANSFER_DST_OPTIMAL;
 
-            let src_stage_mask = vk::PipelineStageFlags::TOP_OF_PIPE;
-            let dst_stage_mask = vk::PipelineStageFlags::TRANSFER;
-            let dependency_flags = vk::DependencyFlags::default();
-            let image_memory_barriers = vec![
-                vk::ImageMemoryBarrier::default()
-                    .old_layout(self.layout)
-                    .new_layout(new_layout)
-                    .image(self.image)
-                    .subresource_range(
-                        vk::ImageSubresourceRange::default()
-                            .aspect_mask(vk::ImageAspectFlags::COLOR)
-                            .base_mip_level(0)
-                            .level_count(1)
-                            .base_array_layer(0)
-                            .layer_count(1),
-                    )
-                    .dst_access_mask(vk::AccessFlags::TRANSFER_WRITE),
-            ];
-            dev.device.cmd_pipeline_barrier(
-                command_buffer,
-                src_stage_mask,
-                dst_stage_mask,
-                dependency_flags,
-                &[],
-                &[],
-                &image_memory_barriers,
-            );
+        let src_stage_mask = vk::PipelineStageFlags::TOP_OF_PIPE;
+        let dst_stage_mask = vk::PipelineStageFlags::TRANSFER;
+        let dependency_flags = vk::DependencyFlags::default();
+        let image_memory_barriers = vec![
+            vk::ImageMemoryBarrier::default()
+                .old_layout(self.layout)
+                .new_layout(new_layout)
+                .image(self.image)
+                .subresource_range(
+                    vk::ImageSubresourceRange::default()
+                        .aspect_mask(vk::ImageAspectFlags::COLOR)
+                        .base_mip_level(0)
+                        .level_count(1)
+                        .base_array_layer(0)
+                        .layer_count(1),
+                )
+                .dst_access_mask(vk::AccessFlags::TRANSFER_WRITE),
+        ];
+        command_buffer.pipeline_barriers(
+            src_stage_mask,
+            dst_stage_mask,
+            dependency_flags,
+            &image_memory_barriers,
+        );
 
-            self.layout = new_layout;
-        }
+        self.layout = new_layout;
 
         // Copy
-        unsafe {
-            let dst_image_layout = self.layout;
-            let regions = vec![
-                vk::BufferImageCopy::default()
-                    .image_subresource(
-                        vk::ImageSubresourceLayers::default()
-                            .aspect_mask(vk::ImageAspectFlags::COLOR)
-                            .layer_count(1),
-                    )
-                    .image_extent(self.extent),
-            ];
-            dev.device.cmd_copy_buffer_to_image(
-                command_buffer,
-                staging.buffer,
-                self.image,
-                dst_image_layout,
-                &regions,
-            );
-        }
+        let region = vk::BufferImageCopy::default()
+            .image_subresource(
+                vk::ImageSubresourceLayers::default()
+                    .aspect_mask(vk::ImageAspectFlags::COLOR)
+                    .layer_count(1),
+            )
+            .image_extent(self.extent);
+        command_buffer.copy_buffer_to_image(staging, self, &region);
 
         // Transfer dst optimal -> Shader read only optimal
-        unsafe {
-            let new_layout = vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL;
+        let new_layout = vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL;
 
-            let src_stage_mask = vk::PipelineStageFlags::TRANSFER;
-            let dst_stage_mask = vk::PipelineStageFlags::FRAGMENT_SHADER;
-            let dependency_flags = vk::DependencyFlags::default();
-            let image_memory_barriers = vec![
-                vk::ImageMemoryBarrier::default()
-                    .old_layout(self.layout)
-                    .new_layout(new_layout)
-                    .image(self.image)
-                    .subresource_range(
-                        vk::ImageSubresourceRange::default()
-                            .aspect_mask(vk::ImageAspectFlags::COLOR)
-                            .base_mip_level(0)
-                            .level_count(1)
-                            .base_array_layer(0)
-                            .layer_count(1),
-                    )
-                    .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
-                    .dst_access_mask(vk::AccessFlags::SHADER_READ),
-            ];
-            dev.device.cmd_pipeline_barrier(
-                command_buffer,
-                src_stage_mask,
-                dst_stage_mask,
-                dependency_flags,
-                &[],
-                &[],
-                &image_memory_barriers,
-            );
+        let src_stage_mask = vk::PipelineStageFlags::TRANSFER;
+        let dst_stage_mask = vk::PipelineStageFlags::FRAGMENT_SHADER;
+        let dependency_flags = vk::DependencyFlags::default();
+        let image_memory_barriers = vec![
+            vk::ImageMemoryBarrier::default()
+                .old_layout(self.layout)
+                .new_layout(new_layout)
+                .image(self.image)
+                .subresource_range(
+                    vk::ImageSubresourceRange::default()
+                        .aspect_mask(vk::ImageAspectFlags::COLOR)
+                        .base_mip_level(0)
+                        .level_count(1)
+                        .base_array_layer(0)
+                        .layer_count(1),
+                )
+                .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
+                .dst_access_mask(vk::AccessFlags::SHADER_READ),
+        ];
+        command_buffer.pipeline_barriers(
+            src_stage_mask,
+            dst_stage_mask,
+            dependency_flags,
+            &image_memory_barriers,
+        );
 
-            self.layout = new_layout;
-        }
+        self.layout = new_layout;
 
-        // End
-        unsafe {
-            dev.device
-                .end_command_buffer(command_buffer)
-                .expect("Failed to end Vulkan command buffer");
-        }
+        command_buffer.end();
 
         let mut fence = Fence::unsignaled(&dev.device.device);
 
-        let commands = [command_buffer];
+        let commands = [command_buffer.command_buffer];
         let submits = [vk::SubmitInfo::default().command_buffers(&commands)];
         dev.graphics_queue.submit(&submits, Some(&mut fence));
 
         fence.wait();
-
-        unsafe {
-            dev.device
-                .free_command_buffers(dev.graphics_command_pool, &commands);
-        }
     }
 }
 

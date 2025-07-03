@@ -147,7 +147,7 @@ pub struct FrameCache {
     pub proj_buffers: BufferCache<Handle<Camera>>,
 
     pub descriptors: Descriptors,
-    pub command_buffer: vk::CommandBuffer,
+    pub command_buffer: CommandBuffer,
     pub fence: Fence,
     pub image_ready: Semaphore,
     pub image_drawn: Semaphore,
@@ -157,16 +157,7 @@ pub struct FrameCache {
 impl FrameCache {
     pub fn new(dev: &Dev) -> Self {
         // Graphics command buffer (device, command pool)
-        let command_buffer = {
-            let alloc_info = vk::CommandBufferAllocateInfo::default()
-                .command_pool(dev.graphics_command_pool)
-                .level(vk::CommandBufferLevel::PRIMARY)
-                .command_buffer_count(1);
-
-            let buffers = unsafe { dev.device.allocate_command_buffers(&alloc_info) }
-                .expect("Failed to allocate command buffer");
-            buffers[0]
-        };
+        let command_buffer = CommandBuffer::new(&dev.graphics_command_pool);
 
         Self {
             model_buffers: BufferCache::new(&dev.allocator),
@@ -228,53 +219,27 @@ impl Frame {
     }
 
     pub fn begin(&self, pass: &Pass, area: Size2) {
-        let begin_info = vk::CommandBufferBeginInfo::default();
-        unsafe {
-            self.device
-                .begin_command_buffer(self.cache.command_buffer, &begin_info)
-        }
-        .expect("Failed to begin Vulkan command buffer");
+        self.cache
+            .command_buffer
+            .begin(vk::CommandBufferUsageFlags::default());
 
-        let mut color_clear = vk::ClearValue::default();
-        color_clear.color.float32 = [0.0, 10.0 / 255.0, 28.0 / 255.0, 1.0];
+        self.cache
+            .command_buffer
+            .begin_render_pass(pass, &self.buffer, area);
 
-        let mut depth_clear = vk::ClearValue::default();
-        depth_clear.depth_stencil.depth = 1.0;
-        depth_clear.depth_stencil.stencil = 0;
-
-        let clear_values = [color_clear, depth_clear];
-        let create_info = vk::RenderPassBeginInfo::default()
-            .framebuffer(self.buffer.framebuffer)
-            .render_pass(pass.render)
-            .render_area(vk::Rect2D::default().extent(vk::Extent2D {
-                width: area.width,
-                height: area.height,
-            }))
-            .clear_values(&clear_values);
-        // Record it in the main command buffer
-        let contents = vk::SubpassContents::INLINE;
-        unsafe {
-            self.device
-                .cmd_begin_render_pass(self.cache.command_buffer, &create_info, contents)
-        };
-
-        let viewports = [vk::Viewport::default()
+        let viewport = vk::Viewport::default()
             .width(area.width as f32)
-            .height(area.height as f32)];
-        unsafe {
-            self.device
-                .cmd_set_viewport(self.cache.command_buffer, 0, &viewports)
-        };
+            .height(area.height as f32)
+            .min_depth(1.0)
+            .max_depth(0.0);
+        self.cache.command_buffer.set_viewport(&viewport);
 
-        let scissors = [vk::Rect2D::default().extent(
+        let scissor = vk::Rect2D::default().extent(
             vk::Extent2D::default()
                 .width(area.width)
                 .height(area.height),
-        )];
-        unsafe {
-            self.device
-                .cmd_set_scissor(self.cache.command_buffer, 0, &scissors)
-        }
+        );
+        self.cache.command_buffer.set_scissor(&scissor);
     }
 
     pub fn draw(&mut self, model: &RenderModel, pipelines: &[Box<dyn RenderPipeline>]) {
@@ -299,12 +264,8 @@ impl Frame {
     }
 
     pub fn end(&self) {
-        unsafe {
-            self.device.cmd_end_render_pass(self.cache.command_buffer);
-            self.device
-                .end_command_buffer(self.cache.command_buffer)
-                .expect("Failed to end command buffer");
-        }
+        self.cache.command_buffer.end_render_pass();
+        self.cache.command_buffer.end();
     }
 
     pub fn present(

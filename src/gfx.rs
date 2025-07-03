@@ -23,7 +23,7 @@ impl Vkr {
 
 pub struct Dev {
     pub surface_format: vk::SurfaceFormatKHR,
-    pub graphics_command_pool: vk::CommandPool,
+    pub graphics_command_pool: CommandPool,
     pub graphics_queue: Queue,
     /// Needs to be public if we want to create buffers outside this module.
     /// The allocator is shared between the various buffers to release resources on drop.
@@ -37,17 +37,7 @@ impl Dev {
 
         let graphics_queue = Queue::new(&device);
 
-        // Command pool
-        let create_info = vk::CommandPoolCreateInfo::default()
-            .flags(vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER)
-            .queue_family_index(device.graphics_queue_index);
-        let graphics_command_pool = {
-            unsafe {
-                device
-                    .create_command_pool(&create_info, None)
-                    .expect("Failed to create Vulkan command pool")
-            }
-        };
+        let graphics_command_pool = CommandPool::new(&device);
 
         // Surface format
         let mut surface_format = vk::SurfaceFormatKHR::default()
@@ -97,9 +87,6 @@ impl Drop for Dev {
     fn drop(&mut self) {
         self.wait();
         assert_eq!(Rc::strong_count(&self.allocator), 1);
-        unsafe {
-            self.device
-                .destroy_command_pool(self.graphics_command_pool, None);
-        }
+        self.graphics_command_pool.destroy();
     }
 }

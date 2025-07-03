@@ -6,6 +6,8 @@ mod asset;
 pub use asset::*;
 mod buffer;
 pub use buffer::*;
+mod command;
+pub use command::*;
 mod ctx;
 pub use ctx::*;
 mod debug;

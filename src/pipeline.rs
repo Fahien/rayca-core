@@ -17,51 +17,21 @@ pub trait Pipeline: Any {
     fn get_vertex_size(&self) -> usize;
 
     fn bind(&self, cache: &FrameCache) {
-        unsafe {
-            cache.device.cmd_bind_pipeline(
-                cache.command_buffer,
-                vk::PipelineBindPoint::GRAPHICS,
-                self.get_pipeline(),
-            );
-        }
+        cache.command_buffer.bind_pipeline(self.get_pipeline());
     }
 
     fn draw(&self, cache: &FrameCache, primitive: &RenderPrimitive) {
-        let first_binding = 0;
-        let buffers = [primitive.vertices.buffer];
-        let offsets = [vk::DeviceSize::default()];
-        unsafe {
-            cache.device.cmd_bind_vertex_buffers(
-                cache.command_buffer,
-                first_binding,
-                &buffers,
-                &offsets,
-            );
-        }
+        cache.command_buffer.bind_vertex_buffer(&primitive.vertices);
 
         if let Some(indices) = &primitive.indices {
             // Draw indexed if primitive has indices
-            unsafe {
-                cache.device.cmd_bind_index_buffer(
-                    cache.command_buffer,
-                    indices.buffer,
-                    0,
-                    vk::IndexType::UINT16,
-                );
-            }
+            cache.command_buffer.bind_index_buffer(indices);
+
             let index_count = indices.size as u32 / std::mem::size_of::<u16>() as u32;
-            unsafe {
-                cache
-                    .device
-                    .cmd_draw_indexed(cache.command_buffer, index_count, 1, 0, 0, 0);
-            }
+            cache.command_buffer.draw_indexed(index_count, 0, 0);
         } else {
             // Draw without indices
-            unsafe {
-                cache
-                    .device
-                    .cmd_draw(cache.command_buffer, primitive.vertex_count, 1, 0, 0);
-            }
+            cache.command_buffer.draw(primitive.vertex_count);
         }
     }
 }
@@ -153,8 +123,8 @@ impl DefaultPipeline {
                 .y(0.0)
                 .width(width as f32)
                 .height(height as f32)
-                .min_depth(0.0)
-                .max_depth(1.0)];
+                .min_depth(1.0)
+                .max_depth(0.0)];
 
             let scissors = [vk::Rect2D::default()
                 .offset(vk::Offset2D::default().x(0).y(0))
@@ -219,8 +189,6 @@ impl DefaultPipeline {
     }
 
     pub fn bind_model_buffer(&self, cache: &mut FrameCache, model: &Model, node: Handle<Node>) {
-        let graphics_bind_point = vk::PipelineBindPoint::GRAPHICS;
-
         // A model buffer must already available at this point
         let buffer = cache.model_buffers.get_mut(&node).unwrap();
         buffer.upload(&model.nodes.get(node).unwrap().trs.to_mat4());
@@ -251,16 +219,9 @@ impl DefaultPipeline {
                 DescriptorEntry::Get(sets) => sets,
             };
 
-        unsafe {
-            self.device.cmd_bind_descriptor_sets(
-                cache.command_buffer,
-                graphics_bind_point,
-                self.get_layout(),
-                0,
-                sets,
-                &[],
-            )
-        }
+        cache
+            .command_buffer
+            .bind_descriptor_sets(self.get_layout(), sets, 0);
     }
 }
 
