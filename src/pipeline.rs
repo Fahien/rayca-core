@@ -69,7 +69,13 @@ pub trait Pipeline: Any {
 pub trait RenderPipeline: Pipeline {
     /// This needs to be manually implemented, as the generator does not know where to
     /// find the various buffers to bind and in which order and frequency to bind them
-    fn render(&self, frame: &mut Frame, model: &RenderModel, nodes: &[Handle<Node>]);
+    fn render(
+        &self,
+        frame: &mut Frame,
+        model: &RenderModel,
+        camera_nodes: &[Handle<Node>],
+        nodes: &[Handle<Node>],
+    );
 }
 
 pub trait PipelinePool {
@@ -219,31 +225,31 @@ impl DefaultPipeline {
         let buffer = cache.model_buffers.get_mut(&node).unwrap();
         buffer.upload(&model.nodes.get(node).unwrap().trs.to_mat4());
 
-        let key = DescriptorKey {
-            pipeline_layout: self.get_layout(),
-            node,
-            material: Handle::NONE,
-        };
-        let sets = match cache.descriptors.get_or_create(key, self.get_set_layouts()) {
-            DescriptorEntry::Created(sets) => {
-                // Update immediately the descriptor sets
-                let buffer_info = [vk::DescriptorBufferInfo::default()
-                    .range(std::mem::size_of::<Mat4>() as vk::DeviceSize)
-                    .buffer(buffer.buffer)];
+        let key = DescriptorKey::builder()
+            .layout(self.get_layout())
+            .node(node)
+            .build();
+        let sets: &[vk::DescriptorSet] =
+            match cache.descriptors.get_or_create(key, self.get_set_layouts()) {
+                DescriptorEntry::Created(sets) => {
+                    // Update immediately the descriptor sets
+                    let buffer_info = [vk::DescriptorBufferInfo::default()
+                        .range(std::mem::size_of::<Mat4>() as vk::DeviceSize)
+                        .buffer(buffer.buffer)];
 
-                let descriptor_write = vk::WriteDescriptorSet::default()
-                    .dst_set(sets[0])
-                    .dst_binding(0)
-                    .dst_array_element(0)
-                    .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
-                    .buffer_info(&buffer_info);
-                unsafe {
-                    self.device.update_descriptor_sets(&[descriptor_write], &[]);
+                    let descriptor_write = vk::WriteDescriptorSet::default()
+                        .dst_set(sets[0])
+                        .dst_binding(0)
+                        .dst_array_element(0)
+                        .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
+                        .buffer_info(&buffer_info);
+                    unsafe {
+                        self.device.update_descriptor_sets(&[descriptor_write], &[]);
+                    }
+                    sets
                 }
-                sets
-            }
-            DescriptorEntry::Get(sets) => sets,
-        };
+                DescriptorEntry::Get(sets) => sets,
+            };
 
         unsafe {
             self.device.cmd_bind_descriptor_sets(
@@ -289,7 +295,13 @@ impl Pipeline for DefaultPipeline {
 }
 
 impl RenderPipeline for DefaultPipeline {
-    fn render(&self, frame: &mut Frame, model: &RenderModel, nodes: &[Handle<Node>]) {
+    fn render(
+        &self,
+        frame: &mut Frame,
+        model: &RenderModel,
+        _camera_nodes: &[Handle<Node>],
+        nodes: &[Handle<Node>],
+    ) {
         self.bind(&frame.cache);
         for node_handle in nodes.iter().copied() {
             self.bind_model_buffer(&mut frame.cache, &model.gltf, node_handle);

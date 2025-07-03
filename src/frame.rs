@@ -140,8 +140,11 @@ pub struct FrameCache {
     /// Uniform buffers for model matrices associated to nodes
     pub model_buffers: BufferCache<Handle<Node>>,
 
-    /// Uniform buffers for view matrices associated to nodes with cameras
+    /// Uniform buffers for camera matrices associated to nodes with cameras
     pub view_buffers: BufferCache<Handle<Node>>,
+
+    // Uniform buffers for proj matrices associated to cameras
+    pub proj_buffers: BufferCache<Handle<Camera>>,
 
     pub descriptors: Descriptors,
     pub command_buffer: vk::CommandBuffer,
@@ -168,6 +171,7 @@ impl FrameCache {
         Self {
             model_buffers: BufferCache::new(&dev.allocator),
             view_buffers: BufferCache::new(&dev.allocator),
+            proj_buffers: BufferCache::new(&dev.allocator),
             descriptors: Descriptors::new(&dev.device),
             command_buffer,
             fence: Fence::signaled(&dev.device.device),
@@ -208,16 +212,17 @@ impl Frame {
     pub fn update(&mut self, model: &RenderModel) {
         for node_handle in model.gltf.scene.iter().cloned() {
             let node = model.gltf.nodes.get(node_handle).unwrap();
-            if !node.mesh.is_valid() {
-                continue;
-            }
+            if node.mesh.is_valid() || node.camera.is_valid() {
+                let uniform_buffer = self.cache.model_buffers.get_or_create::<Mat4>(node_handle);
+                uniform_buffer.upload(&node.trs.to_mat4());
 
-            let uniform_buffer = self.cache.model_buffers.get_or_create::<Mat4>(node_handle);
-            uniform_buffer.upload(&node.trs.to_mat4());
+                if let Some(camera) = model.gltf.cameras.get(node.camera) {
+                    let view_buffer = self.cache.view_buffers.get_or_create::<Mat4>(node_handle);
+                    view_buffer.upload(&node.trs.to_view_mat4());
 
-            if let Some(_camera) = model.gltf.cameras.get(node.camera) {
-                let buffer = self.cache.view_buffers.get_or_create::<Mat4>(node_handle);
-                buffer.upload(&node.trs.to_view_mat4());
+                    let proj_buffer = self.cache.proj_buffers.get_or_create::<Mat4>(node.camera);
+                    proj_buffer.upload(&camera.projection);
+                }
             }
         }
     }
@@ -273,13 +278,23 @@ impl Frame {
     }
 
     pub fn draw(&mut self, model: &RenderModel, pipelines: &[Box<dyn RenderPipeline>]) {
+        // Collect camera handles
+        let mut camera_node_handles = Vec::default();
         for node_handle in model.gltf.scene.iter().cloned() {
             let node = model.gltf.nodes.get(node_handle).unwrap();
-            let mesh = model.gltf.meshes.get(node.mesh).unwrap();
-            let primitive = model.gltf.primitives.get(mesh.primitive).unwrap();
-            let material = model.gltf.materials.get(primitive.material).unwrap();
-            let pipeline = &pipelines[material.shader as usize];
-            pipeline.render(self, model, &[node_handle]);
+            if node.camera.is_valid() {
+                camera_node_handles.push(node_handle);
+            }
+        }
+
+        for node_handle in model.gltf.scene.iter().cloned() {
+            let node = model.gltf.nodes.get(node_handle).unwrap();
+            if let Some(mesh) = model.gltf.meshes.get(node.mesh) {
+                let primitive = model.gltf.primitives.get(mesh.primitive).unwrap();
+                let material = model.gltf.materials.get(primitive.material).unwrap();
+                let pipeline = &pipelines[material.shader as usize];
+                pipeline.render(self, model, &camera_node_handles, &[node_handle]);
+            }
         }
     }
 

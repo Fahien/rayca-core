@@ -8,14 +8,61 @@ use ash::vk;
 
 use crate::*;
 
+#[derive(Default)]
+pub struct DescriptorKeyBuilder {
+    pub layout: vk::PipelineLayout,
+    pub node: Handle<Node>,
+    pub material: Handle<Material>,
+    pub camera: Handle<Camera>,
+}
+
+impl DescriptorKeyBuilder {
+    pub fn layout(mut self, layout: vk::PipelineLayout) -> Self {
+        self.layout = layout;
+        self
+    }
+
+    pub fn node(mut self, node: Handle<Node>) -> Self {
+        self.node = node;
+        self
+    }
+
+    pub fn material(mut self, material: Handle<Material>) -> Self {
+        self.material = material;
+        self
+    }
+
+    pub fn camera(mut self, camera: Handle<Camera>) -> Self {
+        self.camera = camera;
+        self
+    }
+
+    pub fn build(self) -> DescriptorKey {
+        DescriptorKey {
+            layout: self.layout,
+            node: self.node,
+            material: self.material,
+            camera: self.camera,
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct DescriptorKey {
     // Unique per pipeline
-    pub pipeline_layout: vk::PipelineLayout,
+    pub layout: vk::PipelineLayout,
     // Unique per node, for model transforms
     pub node: Handle<Node>,
     // Unique per material, for material buffers
     pub material: Handle<Material>,
+    // Unique per camera, for view and projection matrices
+    pub camera: Handle<Camera>,
+}
+
+impl DescriptorKey {
+    pub fn builder() -> DescriptorKeyBuilder {
+        DescriptorKeyBuilder::default()
+    }
 }
 
 pub enum DescriptorEntry<'s> {
@@ -38,7 +85,7 @@ impl Descriptors {
     pub fn new(device: &Device) -> Self {
         let pool = unsafe {
             let uniform_pool_size = vk::DescriptorPoolSize::default()
-                .descriptor_count(4) // Support 1 model matrix and 1 view matrix for 2 pipelines
+                .descriptor_count(3 * 2) // Support 1 model, 1 view, 1 proj matrix for 2 pipelines
                 .ty(vk::DescriptorType::UNIFORM_BUFFER);
             let sampler_pool_size = vk::DescriptorPoolSize::default()
                 .descriptor_count(2) // Support 1 material for 2 pipelines
@@ -48,7 +95,7 @@ impl Descriptors {
             let create_info = vk::DescriptorPoolCreateInfo::default()
                 .pool_sizes(&pool_sizes)
                 // @todo Use a parameter instead of 2 for frame count
-                .max_sets(2 * 2) // Support 2 frames with 2 pipelines
+                .max_sets(2 * 2 * 3) // Support 2 frames with 2 pipelines with 3 descriptor sets
                 ;
             device.create_descriptor_pool(&create_info, None)
         }
@@ -100,20 +147,11 @@ mod test {
     };
 
     use crate::*;
-    use ash::vk;
 
     #[test]
     fn key() {
-        let key0 = DescriptorKey {
-            pipeline_layout: vk::PipelineLayout::null(),
-            node: Handle::new(0),
-            material: Handle::NONE,
-        };
-        let key1 = DescriptorKey {
-            pipeline_layout: vk::PipelineLayout::null(),
-            node: Handle::NONE,
-            material: Handle::new(0),
-        };
+        let key0 = DescriptorKey::builder().node(Handle::new(0)).build();
+        let key1 = DescriptorKey::builder().material(Handle::new(0)).build();
 
         let mut hasher0 = DefaultHasher::new();
         let mut hasher1 = DefaultHasher::new();
