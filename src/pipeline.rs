@@ -216,7 +216,7 @@ impl DefaultPipeline {
         let graphics_bind_point = vk::PipelineBindPoint::GRAPHICS;
 
         // A model buffer must already available at this point
-        let buffer = cache.uniforms.get_mut(&node).unwrap();
+        let buffer = cache.model_buffers.get_mut(&node).unwrap();
         buffer.upload(&model.nodes.get(node).unwrap().trs.to_mat4());
 
         let key = DescriptorKey {

@@ -96,11 +96,53 @@ impl Drop for Framebuffer {
     }
 }
 
-/// Frame resources that do not need to be recreated
+pub struct BufferCache<K>
+where
+    K: std::hash::Hash + Eq,
+{
+    map: HashMap<K, Buffer>,
+    allocator: Rc<vk_mem::Allocator>,
+}
+
+impl<K> BufferCache<K>
+where
+    K: std::hash::Hash + Eq,
+{
+    fn new(allocator: &Rc<vk_mem::Allocator>) -> Self {
+        Self {
+            map: Default::default(),
+            allocator: allocator.clone(),
+        }
+    }
+    fn get_or_create<T>(&mut self, key: K) -> &mut Buffer {
+        match self.map.entry(key) {
+            Entry::Vacant(e) => {
+                let uniform_buffer =
+                    Buffer::new::<T>(&self.allocator, vk::BufferUsageFlags::UNIFORM_BUFFER);
+                e.insert(uniform_buffer)
+            }
+            Entry::Occupied(e) => e.into_mut(),
+        }
+    }
+
+    pub fn get(&self, key: &K) -> Option<&Buffer> {
+        self.map.get(key)
+    }
+
+    pub fn get_mut(&mut self, key: &K) -> Option<&mut Buffer> {
+        self.map.get_mut(key)
+    }
+}
+
+/// The frame cache contains resources that do not need to be recreated
 /// when the swapchain goes out of date
 pub struct FrameCache {
-    /// Uniform buffers for model matrix are associated to node indices
-    pub uniforms: HashMap<Handle<Node>, Buffer>,
+    /// Uniform buffers for model matrices associated to nodes
+    pub model_buffers: BufferCache<Handle<Node>>,
+
+    /// Uniform buffers for view matrices associated to nodes with cameras
+    pub view_buffers: BufferCache<Handle<Node>>,
+
     pub descriptors: Descriptors,
     pub command_buffer: vk::CommandBuffer,
     pub fence: Fence,
@@ -124,7 +166,8 @@ impl FrameCache {
         };
 
         Self {
-            uniforms: HashMap::new(),
+            model_buffers: BufferCache::new(&dev.allocator),
+            view_buffers: BufferCache::new(&dev.allocator),
             descriptors: Descriptors::new(&dev.device),
             command_buffer,
             fence: Fence::signaled(&dev.device.device),
@@ -147,7 +190,6 @@ pub struct Frame {
     pub cache: FrameCache,
 
     /// A frame should be able to allocate a uniform buffer on draw
-    allocator: Rc<vk_mem::Allocator>,
     pub device: Rc<ash::Device>,
 }
 
@@ -159,7 +201,6 @@ impl Frame {
         Frame {
             buffer,
             cache,
-            allocator: dev.allocator.clone(),
             device: dev.device.device.clone(),
         }
     }
@@ -168,19 +209,16 @@ impl Frame {
         for node_handle in model.gltf.scene.iter().cloned() {
             let node = model.gltf.nodes.get(node_handle).unwrap();
             if !node.mesh.is_valid() {
-                // Skip nodes without a mesh
                 continue;
             }
 
-            let uniform_buffer = match self.cache.uniforms.entry(node_handle) {
-                Entry::Vacant(e) => {
-                    let uniform_buffer =
-                        Buffer::new::<Mat4>(&self.allocator, vk::BufferUsageFlags::UNIFORM_BUFFER);
-                    e.insert(uniform_buffer)
-                }
-                Entry::Occupied(e) => e.into_mut(),
-            };
+            let uniform_buffer = self.cache.model_buffers.get_or_create::<Mat4>(node_handle);
             uniform_buffer.upload(&node.trs.to_mat4());
+
+            if let Some(_camera) = model.gltf.cameras.get(node.camera) {
+                let buffer = self.cache.view_buffers.get_or_create::<Mat4>(node_handle);
+                buffer.upload(&node.trs.to_view_mat4());
+            }
         }
     }
 
