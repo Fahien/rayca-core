@@ -9,7 +9,7 @@ use super::*;
 pub struct CommandBuffer {
     pub command_buffer: vk::CommandBuffer,
     pool: vk::CommandPool,
-    device: Rc<ash::Device>,
+    pub device: Rc<ash::Device>,
 }
 
 impl CommandBuffer {
@@ -69,17 +69,17 @@ impl CommandBuffer {
         };
     }
 
-    pub fn set_viewport(&self, viewport: &vk::Viewport) {
+    pub fn set_viewport(&self, viewport: vk::Viewport) {
         unsafe {
             self.device
-                .cmd_set_viewport(self.command_buffer, 0, &[*viewport])
+                .cmd_set_viewport(self.command_buffer, 0, &[viewport])
         };
     }
 
-    pub fn set_scissor(&self, scissor: &vk::Rect2D) {
+    pub fn set_scissor(&self, scissor: vk::Rect2D) {
         unsafe {
             self.device
-                .cmd_set_scissor(self.command_buffer, 0, &[*scissor])
+                .cmd_set_scissor(self.command_buffer, 0, &[scissor])
         }
     }
 

@@ -157,18 +157,22 @@ impl DefaultPipeline {
 
             let stages = [vert, frag];
 
+            let dynamic_states = vk::PipelineDynamicStateCreateInfo::default()
+                .dynamic_states(&[vk::DynamicState::VIEWPORT]);
+
             let create_info = [vk::GraphicsPipelineCreateInfo::default()
                 .stages(&stages)
                 .layout(layout)
                 .render_pass(pass.render)
-                .subpass(0)
+                .subpass(V::get_subpass())
                 .vertex_input_state(&vertex_input)
                 .input_assembly_state(&input_assembly)
                 .rasterization_state(&raster_state)
                 .viewport_state(&view_state)
                 .multisample_state(&multisample_state)
                 .depth_stencil_state(&depth_state)
-                .color_blend_state(&blend_state)];
+                .color_blend_state(&blend_state)
+                .dynamic_state(&dynamic_states)];
             let pipelines = unsafe {
                 dev.device
                     .create_graphics_pipelines(vk::PipelineCache::null(), &create_info, None)

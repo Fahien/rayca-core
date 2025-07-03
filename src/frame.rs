@@ -18,6 +18,7 @@ pub struct Framebuffer {
     pub depth_view: ImageView,
     pub depth_image: RenderImage,
     pub image_view: vk::ImageView,
+    pub extent: vk::Extent3D,
     device: Rc<ash::Device>,
 }
 
@@ -79,6 +80,7 @@ impl Framebuffer {
             depth_view,
             depth_image,
             image_view,
+            extent: image.extent,
             device: dev.device.device.clone(),
         }
     }
@@ -232,14 +234,14 @@ impl Frame {
             .height(area.height as f32)
             .min_depth(1.0)
             .max_depth(0.0);
-        self.cache.command_buffer.set_viewport(&viewport);
+        self.cache.command_buffer.set_viewport(viewport);
 
         let scissor = vk::Rect2D::default().extent(
             vk::Extent2D::default()
                 .width(area.width)
                 .height(area.height),
         );
-        self.cache.command_buffer.set_scissor(&scissor);
+        self.cache.command_buffer.set_scissor(scissor);
     }
 
     pub fn draw(&mut self, model: &RenderModel, pipelines: &[Box<dyn RenderPipeline>]) {

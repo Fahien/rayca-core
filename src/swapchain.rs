@@ -29,13 +29,17 @@ impl Swapchain {
             surface_capabilities.current_transform
         );
 
+        let mut extent = surface_capabilities.min_image_extent;
+        extent.width = extent.width.max(width);
+        extent.height = extent.height.max(height);
+
         let swapchain = {
             let create_info = vk::SwapchainCreateInfoKHR::default()
                 .surface(surface.surface)
                 .min_image_count(2)
                 .image_format(dev.surface_format.format)
                 .image_color_space(dev.surface_format.color_space)
-                .image_extent(vk::Extent2D::default().width(width).height(height))
+                .image_extent(extent)
                 .image_array_layers(1)
                 .image_usage(vk::ImageUsageFlags::COLOR_ATTACHMENT)
                 .image_sharing_mode(vk::SharingMode::EXCLUSIVE)

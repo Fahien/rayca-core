@@ -24,7 +24,8 @@ impl Buffer {
         usage: vk::BufferUsageFlags,
     ) -> (vk::Buffer, vk_mem::Allocation) {
         let buffer_info = vk::BufferCreateInfo::default()
-            .size(size)
+            // Minimum size is 16 bytes
+            .size(size.max(16))
             .usage(usage)
             .sharing_mode(vk::SharingMode::EXCLUSIVE);
 

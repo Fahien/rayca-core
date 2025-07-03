@@ -15,6 +15,14 @@ pub struct RenderPrimitive {
 }
 
 impl RenderPrimitive {
+    pub fn empty<T>(allocator: &Rc<vk_mem::Allocator>) -> Self {
+        Self {
+            vertex_count: 0,
+            vertices: Buffer::new::<T>(allocator, vk::BufferUsageFlags::VERTEX_BUFFER),
+            indices: None,
+        }
+    }
+
     pub fn new<T>(allocator: &Rc<vk_mem::Allocator>, vv: &[T]) -> Self {
         let vertex_count = vv.len() as u32;
 
@@ -29,10 +37,13 @@ impl RenderPrimitive {
     }
 
     pub fn set_indices(&mut self, ii: &[u16]) {
-        let mut indices =
-            Buffer::new::<u16>(&self.vertices.allocator, vk::BufferUsageFlags::INDEX_BUFFER);
-        indices.upload_arr(ii);
-        self.indices = Some(indices);
+        if self.indices.is_none() {
+            self.indices.replace(Buffer::new::<u16>(
+                &self.vertices.allocator,
+                vk::BufferUsageFlags::INDEX_BUFFER,
+            ));
+        }
+        self.indices.as_mut().unwrap().upload_arr(ii);
     }
 
     /// Returns a new primitive quad with side length 1 centered at the origin

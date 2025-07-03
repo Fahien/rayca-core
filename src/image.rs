@@ -55,7 +55,11 @@ impl RenderImage {
         format: vk::Format,
         color_space: vk::ColorSpaceKHR,
     ) -> Self {
-        let extent = vk::Extent3D::default().width(width).height(height).depth(1);
+        // Minimum size is 1x1
+        let extent = vk::Extent3D::default()
+            .width(width.max(1))
+            .height(height.max(1))
+            .depth(1);
 
         Self {
             managed: true,
@@ -78,7 +82,11 @@ impl RenderImage {
     ) -> Self {
         let allocator = allocator.clone();
 
-        let extent = vk::Extent3D::default().width(width).height(height).depth(1);
+        // Minimum size is 1x1
+        let extent = vk::Extent3D::default()
+            .width(width.max(1))
+            .height(height.max(1))
+            .depth(1);
 
         let usage = if Self::is_depth_format(format) {
             vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT
@@ -124,7 +132,7 @@ impl RenderImage {
         let mut image = Self::new(&dev.allocator, width, height, format);
         let usage = vk::BufferUsageFlags::TRANSFER_SRC;
         let staging = Buffer::from_data(&dev.allocator, data, usage);
-        image.copy_from(&staging, dev);
+        image.simple_copy_from(&staging, dev);
         image
     }
 
@@ -139,7 +147,7 @@ impl RenderImage {
             png_info.height,
             vk::Format::R8G8B8A8_SRGB,
         );
-        image.copy_from(&staging, dev);
+        image.simple_copy_from(&staging, dev);
         image
     }
 
@@ -187,11 +195,25 @@ impl RenderImage {
         fence.wait();
     }
 
-    pub fn copy_from(&mut self, staging: &Buffer, dev: &Dev) {
+    pub fn simple_copy_from(&mut self, staging: &Buffer, dev: &Dev) {
         // @todo Use TRANSFER pool and transfer queue
         let command_buffer = CommandBuffer::new(&dev.graphics_command_pool);
         command_buffer.begin(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
 
+        self.copy_from(staging, &command_buffer);
+
+        command_buffer.end();
+
+        let mut fence = Fence::unsignaled(&dev.device.device);
+
+        let commands = [command_buffer.command_buffer];
+        let submits = [vk::SubmitInfo::default().command_buffers(&commands)];
+        dev.graphics_queue.submit(&submits, Some(&mut fence));
+
+        fence.wait();
+    }
+
+    pub fn copy_from(&mut self, staging: &Buffer, command_buffer: &CommandBuffer) {
         // Undefined -> Transfer dst optimal
         let new_layout = vk::ImageLayout::TRANSFER_DST_OPTIMAL;
 
@@ -262,16 +284,6 @@ impl RenderImage {
         );
 
         self.layout = new_layout;
-
-        command_buffer.end();
-
-        let mut fence = Fence::unsignaled(&dev.device.device);
-
-        let commands = [command_buffer.command_buffer];
-        let submits = [vk::SubmitInfo::default().command_buffers(&commands)];
-        dev.graphics_queue.submit(&submits, Some(&mut fence));
-
-        fence.wait();
     }
 }
 
