@@ -183,6 +183,12 @@ impl FrameCache {
 }
 
 pub struct Frame {
+    /// The number of this frame
+    pub id: usize,
+
+    /// The number of in-flight frames
+    pub in_flight_count: usize,
+
     pub buffer: Framebuffer,
     pub cache: FrameCache,
 
@@ -191,18 +197,30 @@ pub struct Frame {
 }
 
 impl Frame {
-    pub fn new(dev: &Dev, image: &RenderImage, pass: &Pass) -> Self {
+    pub fn new(
+        id: usize,
+        in_flight_count: usize,
+        dev: &Dev,
+        image: &RenderImage,
+        pass: &Pass,
+    ) -> Self {
         let buffer = Framebuffer::new(dev, image, pass);
         let cache = FrameCache::new(dev);
 
         Frame {
+            id,
+            in_flight_count,
             buffer,
             cache,
             device: dev.device.device.clone(),
         }
     }
 
-    pub fn update(&mut self, model: &RenderModel) {
+    pub fn get_size(&self) -> Size2 {
+        Size2::new(self.buffer.extent.width, self.buffer.extent.height)
+    }
+
+    fn update(&mut self, model: &RenderModel) {
         for node_handle in model.gltf.scene.iter().cloned() {
             let node = model.gltf.nodes.get(node_handle).unwrap();
             if node.mesh.is_valid() || node.camera.is_valid() {
@@ -220,26 +238,36 @@ impl Frame {
         }
     }
 
-    pub fn begin(&self, pass: &Pass, area: Size2) {
+    /// Updates internal buffers and begins the command buffer
+    pub fn begin(&mut self, model: &RenderModel) {
+        self.update(model);
+
         self.cache
             .command_buffer
             .begin(vk::CommandBufferUsageFlags::default());
+    }
 
+    pub fn begin_render(&self, pass: &Pass) {
+        let size = self.get_size();
         self.cache
             .command_buffer
-            .begin_render_pass(pass, &self.buffer, area);
+            .begin_render_pass(pass, &self.buffer, size);
+    }
+
+    pub fn set_viewport_and_scissor(&self, scale: f32) {
+        let size = self.get_size();
 
         let viewport = vk::Viewport::default()
-            .width(area.width as f32)
-            .height(area.height as f32)
+            .width(size.width as f32 * scale)
+            .height(size.height as f32 * scale)
             .min_depth(1.0)
             .max_depth(0.0);
         self.cache.command_buffer.set_viewport(viewport);
 
         let scissor = vk::Rect2D::default().extent(
             vk::Extent2D::default()
-                .width(area.width)
-                .height(area.height),
+                .width(size.width)
+                .height(size.height),
         );
         self.cache.command_buffer.set_scissor(scissor);
     }
@@ -333,7 +361,7 @@ impl SwapchainFrames {
     pub fn new(
         ctx: &Ctx,
         surface: &Surface,
-        dev: &mut Dev,
+        dev: &Dev,
         width: u32,
         height: u32,
         pass: &Pass,
@@ -341,8 +369,9 @@ impl SwapchainFrames {
         let swapchain = Swapchain::new(ctx, surface, dev, width, height);
 
         let mut frames = Vec::new();
-        for image in &swapchain.images {
-            let frame = Frame::new(dev, image, pass);
+        let in_flight_count = swapchain.images.len();
+        for (id, image) in swapchain.images.iter().enumerate() {
+            let frame = Frame::new(id, in_flight_count, dev, image, pass);
             frames.push(frame);
         }
 
