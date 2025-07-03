@@ -61,7 +61,7 @@ impl Framebuffer {
 
         // Framebuffers (image_view, renderpass)
         let framebuffer = {
-            let attachments = [image_view];
+            let attachments = [image_view, depth_view.view];
 
             let create_info = vk::FramebufferCreateInfo::default()
                 .render_pass(pass.render)
@@ -192,9 +192,14 @@ impl Frame {
         }
         .expect("Failed to begin Vulkan command buffer");
 
-        let mut clear = vk::ClearValue::default();
-        clear.color.float32 = [0.0, 10.0 / 255.0, 28.0 / 255.0, 1.0];
-        let clear_values = [clear];
+        let mut color_clear = vk::ClearValue::default();
+        color_clear.color.float32 = [0.0, 10.0 / 255.0, 28.0 / 255.0, 1.0];
+
+        let mut depth_clear = vk::ClearValue::default();
+        depth_clear.depth_stencil.depth = 1.0;
+        depth_clear.depth_stencil.stencil = 0;
+
+        let clear_values = [color_clear, depth_clear];
         let create_info = vk::RenderPassBeginInfo::default()
             .framebuffer(self.buffer.framebuffer)
             .render_pass(pass.render)

@@ -164,6 +164,13 @@ impl DefaultPipeline {
                 .alpha_to_coverage_enable(false)
                 .alpha_to_one_enable(false);
 
+            let depth_state = vk::PipelineDepthStencilStateCreateInfo::default()
+                .depth_test_enable(true)
+                .depth_write_enable(true)
+                .depth_compare_op(vk::CompareOp::LESS)
+                .depth_bounds_test_enable(false)
+                .stencil_test_enable(false);
+
             let blend_attachment = [vk::PipelineColorBlendAttachmentState::default()
                 .blend_enable(false)
                 .color_write_mask(vk::ColorComponentFlags::RGBA)];
@@ -184,6 +191,7 @@ impl DefaultPipeline {
                 .rasterization_state(&raster_state)
                 .viewport_state(&view_state)
                 .multisample_state(&multisample_state)
+                .depth_stencil_state(&depth_state)
                 .color_blend_state(&blend_state)];
             let pipelines = unsafe {
                 dev.device
