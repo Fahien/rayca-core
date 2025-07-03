@@ -14,6 +14,27 @@ pub trait VertexInput {
 
     fn get_bindings() -> Vec<vk::VertexInputBindingDescription>;
     fn get_attributes() -> Vec<vk::VertexInputAttributeDescription>;
+
+    fn get_depth_state<'a>() -> vk::PipelineDepthStencilStateCreateInfo<'a> {
+        vk::PipelineDepthStencilStateCreateInfo::default()
+            .depth_test_enable(true)
+            .depth_write_enable(true)
+            .depth_compare_op(vk::CompareOp::GREATER)
+            .depth_bounds_test_enable(false)
+            .stencil_test_enable(false)
+    }
+
+    fn get_color_blend() -> Vec<vk::PipelineColorBlendAttachmentState> {
+        vec![
+            vk::PipelineColorBlendAttachmentState::default()
+                .blend_enable(false)
+                .color_write_mask(vk::ColorComponentFlags::RGBA),
+        ]
+    }
+
+    fn get_subpass() -> u32 {
+        0
+    }
 }
 
 impl VertexInput for LineVertex {
