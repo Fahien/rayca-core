@@ -204,61 +204,48 @@ impl DefaultPipeline {
         }
     }
 
-    pub fn bind_model_buffer(
-        &self,
-        cache: &mut FrameCache,
-        model: &RenderModel,
-        node: Handle<Node>,
-    ) {
+    pub fn bind_model_buffer(&self, cache: &mut FrameCache, model: &Model, node: Handle<Node>) {
         let graphics_bind_point = vk::PipelineBindPoint::GRAPHICS;
 
         // A model buffer must already available at this point
         let buffer = cache.uniforms.get_mut(&node).unwrap();
-        buffer.upload(&model.gltf.nodes.get(node).unwrap().trs.to_mat4());
+        buffer.upload(&model.nodes.get(node).unwrap().trs.to_mat4());
 
-        if let Some(sets) = cache.descriptors.sets.get(&(self.get_layout(), node)) {
-            unsafe {
-                self.device.cmd_bind_descriptor_sets(
-                    cache.command_buffer,
-                    graphics_bind_point,
-                    self.get_layout(),
-                    0,
-                    sets,
-                    &[],
-                );
+        let key = DescriptorKey {
+            pipeline_layout: self.get_layout(),
+            node,
+            material: Handle::NONE,
+        };
+        let sets = match cache.descriptors.get_or_create(key, self.get_set_layouts()) {
+            DescriptorEntry::Created(sets) => {
+                // Update immediately the descriptor sets
+                let buffer_info = [vk::DescriptorBufferInfo::default()
+                    .range(std::mem::size_of::<Mat4>() as vk::DeviceSize)
+                    .buffer(buffer.buffer)];
+
+                let descriptor_write = vk::WriteDescriptorSet::default()
+                    .dst_set(sets[0])
+                    .dst_binding(0)
+                    .dst_array_element(0)
+                    .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
+                    .buffer_info(&buffer_info);
+                unsafe {
+                    self.device.update_descriptor_sets(&[descriptor_write], &[]);
+                }
+                sets
             }
-        } else {
-            let sets = cache.descriptors.allocate(self.get_set_layouts());
+            DescriptorEntry::Get(sets) => sets,
+        };
 
-            // Update immediately the descriptor sets
-            let buffer_info = [vk::DescriptorBufferInfo::default()
-                .range(std::mem::size_of::<Mat4>() as vk::DeviceSize)
-                .buffer(buffer.buffer)];
-
-            let descriptor_write = vk::WriteDescriptorSet::default()
-                .dst_set(sets[0])
-                .dst_binding(0)
-                .dst_array_element(0)
-                .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
-                .buffer_info(&buffer_info);
-
-            unsafe {
-                self.device.update_descriptor_sets(&[descriptor_write], &[]);
-
-                self.device.cmd_bind_descriptor_sets(
-                    cache.command_buffer,
-                    graphics_bind_point,
-                    self.get_layout(),
-                    0,
-                    &sets,
-                    &[],
-                );
-            }
-
-            cache
-                .descriptors
-                .sets
-                .insert((self.get_layout(), node), sets);
+        unsafe {
+            self.device.cmd_bind_descriptor_sets(
+                cache.command_buffer,
+                graphics_bind_point,
+                self.get_layout(),
+                0,
+                sets,
+                &[],
+            )
         }
     }
 }
@@ -297,7 +284,7 @@ impl RenderPipeline for DefaultPipeline {
     fn render(&self, frame: &mut Frame, model: &RenderModel, nodes: &[Handle<Node>]) {
         self.bind(&frame.cache);
         for node_handle in nodes.iter().copied() {
-            self.bind_model_buffer(&mut frame.cache, model, node_handle);
+            self.bind_model_buffer(&mut frame.cache, &model.gltf, node_handle);
             let node = model.gltf.nodes.get(node_handle).unwrap();
             let mesh = model.gltf.meshes.get(node.mesh).unwrap();
             let vertex_buffer = &model.primitives.get(mesh.primitive.id.into()).unwrap();

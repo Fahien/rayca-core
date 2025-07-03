@@ -152,6 +152,10 @@ impl Frame {
     pub fn update(&mut self, model: &RenderModel) {
         for node_handle in model.gltf.scene.iter().cloned() {
             let node = model.gltf.nodes.get(node_handle).unwrap();
+            if !node.mesh.is_valid() {
+                // Skip nodes without a mesh
+                continue;
+            }
 
             let uniform_buffer = match self.cache.uniforms.entry(node_handle) {
                 Entry::Vacant(e) => {
