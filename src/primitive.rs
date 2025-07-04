@@ -47,23 +47,23 @@ impl RenderPrimitive {
     }
 
     /// Returns a new primitive quad with side length 1 centered at the origin
-    pub fn quad(allocator: &Rc<vk_mem::Allocator>) -> Self {
+    pub fn quad(allocator: &Rc<vk_mem::Allocator>, uv_scale: Vec2) -> Self {
         let vertices = vec![
             Vertex::builder()
                 .position(Point3::new(-0.5, -0.5, 0.0))
-                .uv(Vec2::new(0.0, 1.0))
+                .uv(Vec2::new(0.0, 1.0) * uv_scale)
                 .build(),
             Vertex::builder()
                 .position(Point3::new(0.5, -0.5, 0.0))
-                .uv(Vec2::new(1.0, 1.0))
+                .uv(Vec2::new(1.0, 1.0) * uv_scale)
                 .build(),
             Vertex::builder()
                 .position(Point3::new(0.5, 0.5, 0.0))
-                .uv(Vec2::new(1.0, 0.0))
+                .uv(Vec2::new(1.0, 0.0) * uv_scale)
                 .build(),
             Vertex::builder()
                 .position(Point3::new(-0.5, 0.5, 0.0))
-                .uv(Vec2::new(0.0, 0.0))
+                .uv(Vec2::new(0.0, 0.0) * uv_scale)
                 .build(),
         ];
         let indices = vec![0, 1, 2, 2, 3, 0];
