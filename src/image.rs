@@ -50,15 +50,14 @@ impl RenderImage {
 
     pub fn unmanaged(
         image: vk::Image,
-        width: u32,
-        height: u32,
+        size: Size2,
         format: vk::Format,
         color_space: vk::ColorSpaceKHR,
     ) -> Self {
         // Minimum size is 1x1
         let extent = vk::Extent3D::default()
-            .width(width.max(1))
-            .height(height.max(1))
+            .width(size.width.max(1))
+            .height(size.height.max(1))
             .depth(1);
 
         Self {

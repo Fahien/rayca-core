@@ -8,16 +8,103 @@ use std::rc::Rc;
 use crate::*;
 
 pub struct Vkr {
+    pub frames: SwapchainFrames,
+    pub pass: Pass,
+    pub dev: Dev,
+    pub surface: Surface,
     pub debug: Debug,
     pub ctx: Ctx,
+    pub events: Option<Events>,
 }
 
 impl Vkr {
-    pub fn new(win: &Win) -> Self {
+    pub fn new(win: &mut Win) -> Self {
+        let mut events = Events::new(win);
         let ctx = Ctx::builder().win(win).build();
         let debug = Debug::new(&ctx);
 
-        Self { ctx, debug }
+        // Pump events to ensure the window is created and ready
+        loop {
+            events.update(win);
+            if win.window.is_some() || win.exit {
+                break;
+            }
+        }
+
+        let surface = Surface::new(&win, &ctx);
+        let dev = Dev::new(&ctx, Some(&surface));
+        let pass = Pass::new(&dev);
+
+        let frames = SwapchainFrames::new(&ctx, &surface, &dev, win.size, &pass);
+
+        Self {
+            events: Some(events),
+            ctx,
+            debug,
+            surface,
+            dev,
+            pass,
+            frames,
+        }
+    }
+
+    fn recreate_swapchain(&mut self, size: Size2) {
+        self.dev.wait();
+        // Drop swapchain?
+        // Current must be reset to avoid LAYOUT_UNDEFINED validation errors
+        self.frames.swapchain = Swapchain::new(
+            &self.ctx,
+            &self.surface,
+            &self.dev,
+            size,
+            Some(self.frames.swapchain.swapchain),
+        );
+        for i in 0..self.frames.swapchain.images.len() {
+            let frame = &mut self.frames.frames[i].as_mut().unwrap();
+            // Only this semaphore must be recreated to avoid validation errors
+            // The image drawn one is still in use at the moment
+            frame.cache.image_ready = Semaphore::new(&self.dev.device.device);
+            frame.buffer =
+                Framebuffer::new(&self.dev, &self.frames.swapchain.images[i], &self.pass);
+        }
+    }
+
+    pub fn update(&mut self, win: &mut Win) {
+        if let Some(events) = self.events.as_mut() {
+            events.update(win);
+        }
+        if win.exit {
+            return;
+        }
+        if win.is_resized() {
+            println!("Window resized to: {}x{}", win.size.width, win.size.height);
+            self.recreate_swapchain(win.size);
+        }
+    }
+
+    pub fn next_frame(&mut self, win: &Win) -> Result<Option<Frame>, vk::Result> {
+        match self.frames.next_frame() {
+            Err(vk::Result::ERROR_OUT_OF_DATE_KHR) => {
+                println!("Swapchain out of date, recreating...");
+                self.recreate_swapchain(win.size);
+                Ok(None)
+            }
+            Err(result) => Err(result),
+            Ok(frame) => Ok(Some(frame)),
+        }
+    }
+
+    pub fn present(&mut self, win: &Win, frame: Frame) -> Result<(), vk::Result> {
+        match self.frames.present(&self.dev, frame) {
+            // Recreate swapchain
+            Err(vk::Result::ERROR_OUT_OF_DATE_KHR) => {
+                println!("Swapchain out of date, recreating...");
+                self.recreate_swapchain(win.size);
+                Ok(())
+            }
+            Err(result) => Err(result),
+            _ => Ok(()),
+        }
     }
 }
 

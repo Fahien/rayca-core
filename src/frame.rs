@@ -220,21 +220,28 @@ impl Frame {
         Size2::new(self.buffer.extent.width, self.buffer.extent.height)
     }
 
-    fn update(&mut self, model: &RenderModel) {
-        for node_handle in model.gltf.scene.iter().cloned() {
-            let node = model.gltf.nodes.get(node_handle).unwrap();
-            if node.mesh.is_valid() || node.camera.is_valid() {
-                let uniform_buffer = self.cache.model_buffers.get_or_create::<Mat4>(node_handle);
-                uniform_buffer.upload(&node.trs.to_mat4());
+    fn update_node(&mut self, node_handle: Handle<Node>, model: &RenderModel) {
+        let node = model.gltf.nodes.get(node_handle).unwrap();
+        if node.mesh.is_valid() || node.camera.is_valid() {
+            let uniform_buffer = self.cache.model_buffers.get_or_create::<Mat4>(node_handle);
+            uniform_buffer.upload(&node.trs.to_mat4());
 
-                if let Some(camera) = model.gltf.cameras.get(node.camera) {
-                    let view_buffer = self.cache.view_buffers.get_or_create::<Mat4>(node_handle);
-                    view_buffer.upload(&node.trs.to_view_mat4());
+            if let Some(camera) = model.gltf.cameras.get(node.camera) {
+                let view_buffer = self.cache.view_buffers.get_or_create::<Mat4>(node_handle);
+                view_buffer.upload(&node.trs.to_view_mat4());
 
-                    let proj_buffer = self.cache.proj_buffers.get_or_create::<Mat4>(node.camera);
-                    proj_buffer.upload(&camera.projection);
-                }
+                let proj_buffer = self.cache.proj_buffers.get_or_create::<Mat4>(node.camera);
+                proj_buffer.upload(&camera.projection);
             }
+        }
+        for child in node.children.iter().cloned() {
+            self.update_node(child, model);
+        }
+    }
+
+    fn update(&mut self, model: &RenderModel) {
+        for node in model.gltf.scene.iter().cloned() {
+            self.update_node(node, model);
         }
     }
 
@@ -327,8 +334,8 @@ impl Drop for Frame {
 }
 
 pub trait Frames {
-    fn next_frame(&mut self) -> Result<&mut Frame, vk::Result>;
-    fn present(&mut self, dev: &Dev) -> Result<(), vk::Result>;
+    fn next_frame(&mut self) -> Result<Frame, vk::Result>;
+    fn present(&mut self, dev: &Dev, frame: Frame) -> Result<(), vk::Result>;
 }
 
 /// Offscreen frames work on user allocated images
@@ -338,12 +345,12 @@ struct _OffscreenFrames {
 }
 
 impl Frames for _OffscreenFrames {
-    fn next_frame(&mut self) -> Result<&mut Frame, vk::Result> {
+    fn next_frame(&mut self) -> Result<Frame, vk::Result> {
         // Unimplemented
         Err(vk::Result::ERROR_UNKNOWN)
     }
 
-    fn present(&mut self, _dev: &Dev) -> Result<(), vk::Result> {
+    fn present(&mut self, _dev: &Dev, _frame: Frame) -> Result<(), vk::Result> {
         // Unimplemented
         Err(vk::Result::ERROR_UNKNOWN)
     }
@@ -351,81 +358,69 @@ impl Frames for _OffscreenFrames {
 
 /// Swapchain frames work on swapchain images
 pub struct SwapchainFrames {
-    pub current: usize,
-    image_index: u32,
-    pub frames: Vec<Frame>,
+    pub frames: Vec<Option<Frame>>,
     pub swapchain: Swapchain,
+    device: Rc<ash::Device>,
 }
 
 impl SwapchainFrames {
-    pub fn new(
-        ctx: &Ctx,
-        surface: &Surface,
-        dev: &Dev,
-        width: u32,
-        height: u32,
-        pass: &Pass,
-    ) -> Self {
-        let swapchain = Swapchain::new(ctx, surface, dev, width, height);
+    pub fn new(ctx: &Ctx, surface: &Surface, dev: &Dev, size: Size2, pass: &Pass) -> Self {
+        let swapchain = Swapchain::new(ctx, surface, dev, size, None);
 
         let mut frames = Vec::new();
         let in_flight_count = swapchain.images.len();
         for (id, image) in swapchain.images.iter().enumerate() {
             let frame = Frame::new(id, in_flight_count, dev, image, pass);
-            frames.push(frame);
+            frames.push(Some(frame));
         }
 
         Self {
-            current: 0,
-            image_index: 0,
             frames,
             swapchain,
+            device: dev.device.device.clone(),
         }
     }
 }
 
 impl Frames for SwapchainFrames {
-    fn next_frame(&mut self) -> Result<&mut Frame, vk::Result> {
-        // Wait for this frame to be ready
-        let frame = &mut self.frames[self.current];
-        frame.cache.wait();
+    fn next_frame(&mut self) -> Result<Frame, vk::Result> {
+        // Create a new semaphore for the next image
+        let image_ready = Semaphore::new(&self.device);
 
         let acquire_res = unsafe {
             self.swapchain.ext.acquire_next_image(
                 self.swapchain.swapchain,
                 u64::MAX,
-                frame.cache.image_ready.semaphore,
+                image_ready.semaphore,
                 vk::Fence::null(),
             )
         };
 
         match acquire_res {
-            Ok((image_index, false)) => {
-                self.image_index = image_index;
+            Ok((image_index, _)) => {
+                // Take frame at image index
+                let mut frame = self.frames[image_index as usize].take().unwrap();
+                assert_eq!(frame.id, image_index as usize);
+                // Wait for this frame's command buffer to be ready
+                frame.cache.wait();
+                // Save created semaphore in this frame
+                frame.cache.image_ready = image_ready;
                 Ok(frame)
             }
             // Suboptimal
-            Ok((_, true)) => {
-                self.current = 0;
-                Err(vk::Result::ERROR_OUT_OF_DATE_KHR)
-            }
-            Err(result) => {
-                self.current = 0;
-                Err(result)
-            }
+            //Ok((_, true)) => Err(vk::Result::ERROR_OUT_OF_DATE_KHR),
+            Err(result) => Err(result),
         }
     }
 
-    fn present(&mut self, dev: &Dev) -> Result<(), vk::Result> {
-        match self.frames[self.current].present(dev, &self.swapchain, self.image_index) {
-            Ok(()) => {
-                self.current = (self.current + 1) % self.frames.len();
-                Ok(())
-            }
-            Err(result) => {
-                self.current = 0;
-                Err(result)
-            }
+    fn present(&mut self, dev: &Dev, frame: Frame) -> Result<(), vk::Result> {
+        let image_index = frame.id;
+        self.frames[image_index].replace(frame);
+
+        let frame = self.frames[image_index].as_mut().unwrap();
+        match frame.present(dev, &self.swapchain, image_index as u32) {
+            Ok(()) => Ok(()),
+            Err(result) => Err(result),
         }
     }
 }

@@ -76,7 +76,7 @@ pub struct Win {
     window_id: Option<WindowId>,
     pub window: Option<Window>,
 
-    pub resized: bool,
+    resized: bool,
     pub exit: bool,
 
     pub input: Input,

@@ -13,7 +13,13 @@ pub struct Swapchain {
 }
 
 impl Swapchain {
-    pub fn new(ctx: &Ctx, surface: &Surface, dev: &Dev, width: u32, height: u32) -> Self {
+    pub fn new(
+        ctx: &Ctx,
+        surface: &Surface,
+        dev: &Dev,
+        size: Size2,
+        old_swapchain: Option<vk::SwapchainKHR>,
+    ) -> Self {
         // Swapchain (instance, logical device, surface formats)
         let ext = khr::swapchain::Device::new(&ctx.instance, &dev.device);
 
@@ -30,11 +36,11 @@ impl Swapchain {
         );
 
         let mut extent = surface_capabilities.min_image_extent;
-        extent.width = extent.width.max(width);
-        extent.height = extent.height.max(height);
+        extent.width = extent.width.max(size.width);
+        extent.height = extent.height.max(size.height);
 
         let swapchain = {
-            let create_info = vk::SwapchainCreateInfoKHR::default()
+            let mut create_info = vk::SwapchainCreateInfoKHR::default()
                 .surface(surface.surface)
                 .min_image_count(2)
                 .image_format(dev.surface_format.format)
@@ -43,10 +49,13 @@ impl Swapchain {
                 .image_array_layers(1)
                 .image_usage(vk::ImageUsageFlags::COLOR_ATTACHMENT)
                 .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
-                .pre_transform(vk::SurfaceTransformFlagsKHR::IDENTITY)
+                .pre_transform(surface_capabilities.current_transform)
                 .composite_alpha(vk::CompositeAlphaFlagsKHR::OPAQUE)
                 .present_mode(vk::PresentModeKHR::FIFO)
                 .clipped(true);
+            if let Some(old_swapchain) = old_swapchain {
+                create_info = create_info.old_swapchain(old_swapchain);
+            }
             unsafe { ext.create_swapchain(&create_info, None) }
                 .expect("Failed to create Vulkan swapchain")
         };
@@ -58,8 +67,7 @@ impl Swapchain {
         for image in swapchain_images.into_iter() {
             images.push(RenderImage::unmanaged(
                 image,
-                width,
-                height,
+                size,
                 dev.surface_format.format,
                 dev.surface_format.color_space,
             ));
