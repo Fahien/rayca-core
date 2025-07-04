@@ -2,17 +2,16 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
-use rayca_geometry::Size2;
+use crate::*;
+
 use winit::{
     application::ApplicationHandler,
     dpi::PhysicalSize,
-    event::WindowEvent,
+    event::{ElementState, KeyEvent, MouseButton, WindowEvent},
     event_loop::ActiveEventLoop,
+    keyboard::{KeyCode, PhysicalKey},
     window::{Window, WindowId},
 };
-
-#[cfg(target_os = "android")]
-use winit::platform::android::activity::AndroidApp;
 
 pub struct WinBuilder {
     title: String,
@@ -79,6 +78,14 @@ pub struct Win {
 
     pub resized: bool,
     pub exit: bool,
+
+    pub input: Input,
+}
+
+impl Default for Win {
+    fn default() -> Self {
+        Self::builder().build()
+    }
 }
 
 impl Win {
@@ -95,6 +102,7 @@ impl Win {
             window: None,
             resized: false,
             exit: false,
+            input: Input::default(),
         }
     }
 
@@ -108,6 +116,7 @@ impl Win {
             window: None,
             resized: false,
             exit: false,
+            input: Input::default(),
         }
     }
 
@@ -142,6 +151,46 @@ impl ApplicationHandler for Win {
         }
 
         match event {
+            WindowEvent::KeyboardInput {
+                event:
+                    KeyEvent {
+                        physical_key,
+                        state,
+                        ..
+                    },
+                ..
+            } => match physical_key {
+                PhysicalKey::Code(KeyCode::KeyW) => match state {
+                    ElementState::Pressed => self.input.w = ButtonState::JustPressed,
+                    ElementState::Released => self.input.w = ButtonState::JustReleased,
+                },
+                PhysicalKey::Code(KeyCode::KeyS) => match state {
+                    ElementState::Pressed => self.input.s = ButtonState::JustPressed,
+                    ElementState::Released => self.input.s = ButtonState::JustReleased,
+                },
+                _ => (),
+            },
+            WindowEvent::MouseInput {
+                state,
+                button: MouseButton::Left,
+                ..
+            } => match state {
+                ElementState::Pressed => self.input.mouse.left = ButtonState::JustPressed,
+                ElementState::Released => self.input.mouse.left = ButtonState::JustReleased,
+            },
+            WindowEvent::MouseInput {
+                state,
+                button: MouseButton::Right,
+                ..
+            } => match state {
+                ElementState::Pressed => self.input.mouse.right = ButtonState::JustPressed,
+                ElementState::Released => self.input.mouse.right = ButtonState::JustReleased,
+            },
+            WindowEvent::CursorMoved { position, .. } => {
+                self.input.mouse.just_moved = true;
+                self.input.mouse.position.x = position.x as f32;
+                self.input.mouse.position.y = position.y as f32;
+            }
             WindowEvent::CloseRequested => {
                 self.window = None;
                 self.exit = true;

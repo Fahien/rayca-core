@@ -57,6 +57,7 @@ impl ButtonState {
 
 #[derive(Default)]
 pub struct Mouse {
+    pub position: Vec2,
     pub just_moved: bool,
     pub left: ButtonState,
     pub right: ButtonState,
