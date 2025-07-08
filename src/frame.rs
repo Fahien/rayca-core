@@ -4,7 +4,7 @@
 
 use ash::vk;
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{HashMap, hash_map::Entry},
     rc::Rc,
 };
 
@@ -273,12 +273,12 @@ impl Frame {
     }
 
     fn update_node(&mut self, node_handle: Handle<Node>, model: &RenderModel) {
-        let node = model.gltf.nodes.get(node_handle).unwrap();
+        let node = model.get_node(node_handle).unwrap();
         if node.mesh.is_valid() || node.camera.is_valid() {
             let uniform_buffer = self.cache.model_buffers.get_or_create::<Mat4>(node_handle);
             uniform_buffer.upload(&node.trs.to_mat4());
 
-            if let Some(camera) = model.gltf.cameras.get(node.camera) {
+            if let Some(camera) = model.get_camera(node.camera) {
                 let view_buffer = self.cache.view_buffers.get_or_create::<Mat4>(node_handle);
                 view_buffer.upload(&node.trs.to_view_mat4());
 
@@ -286,9 +286,10 @@ impl Frame {
                 proj_buffer.upload(&camera.projection);
             }
 
-            if let Some(mesh) = model.gltf.meshes.get(node.mesh) {
-                if let Some(primitive) = model.gltf.primitives.get(mesh.primitive) {
-                    if let Some(material) = model.gltf.materials.get(primitive.material) {
+            if let Some(mesh) = model.get_mesh(node.mesh) {
+                for primitive_handle in mesh.primitives.iter().copied() {
+                    let primitive = model.get_primitive(primitive_handle).unwrap();
+                    if let Some(material) = model.get_material(primitive.material) {
                         let color_buffer = self
                             .cache
                             .material_buffers
@@ -304,7 +305,7 @@ impl Frame {
     }
 
     fn update(&mut self, model: &RenderModel) {
-        for node in model.gltf.scene.iter().cloned() {
+        for node in model.get_scene().children.iter().cloned() {
             self.update_node(node, model);
         }
     }
@@ -350,15 +351,18 @@ impl Frame {
         model: &RenderModel,
         pipelines: &[Box<dyn RenderPipeline>],
     ) {
-        let node = model.gltf.nodes.get(node_handle).unwrap();
-        if let Some(mesh) = model.gltf.meshes.get(node.mesh) {
-            let primitive = model.gltf.primitives.get(mesh.primitive).unwrap();
-            let material = match model.gltf.materials.get(primitive.material) {
-                Some(material) => material,
-                None => &self.cache.fallback.white_material,
-            };
-            let pipeline = &pipelines[material.shader as usize];
-            pipeline.render(self, model, cameras, &[node_handle]);
+        let node = model.get_node(node_handle).unwrap();
+        if let Some(mesh) = model.get_mesh(node.mesh) {
+            for primitive_handle in mesh.primitives.iter().copied() {
+                let primitive = model.get_primitive(primitive_handle).unwrap();
+                let material = match model.get_material(primitive.material) {
+                    Some(material) => material,
+                    None => &self.cache.fallback.white_material,
+                };
+                let pipeline = &pipelines[material.shader as usize];
+                // Rendering a node multiple times for each primitive?
+                pipeline.render(self, model, cameras, &[node_handle]);
+            }
         }
         for child in node.children.iter().cloned() {
             self.draw_node(cameras, child, model, pipelines);
@@ -368,14 +372,14 @@ impl Frame {
     pub fn draw(&mut self, model: &RenderModel, pipelines: &[Box<dyn RenderPipeline>]) {
         // Collect camera handles
         let mut cameras = Vec::default();
-        for node_handle in model.gltf.scene.iter().cloned() {
-            let node = model.gltf.nodes.get(node_handle).unwrap();
+        for node_handle in model.get_scene().children.iter().cloned() {
+            let node = model.get_node(node_handle).unwrap();
             if node.camera.is_valid() {
                 cameras.push(node_handle);
             }
         }
 
-        for node_handle in model.gltf.scene.iter().cloned() {
+        for node_handle in model.get_scene().children.iter().cloned() {
             self.draw_node(&cameras, node_handle, model, pipelines);
         }
     }
