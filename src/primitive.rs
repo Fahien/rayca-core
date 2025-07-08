@@ -72,4 +72,172 @@ impl RenderPrimitive {
         ret.set_indices(&indices);
         ret
     }
+
+    pub fn cube(allocator: &Rc<vk_mem::Allocator>) -> Self {
+        let vertices = vec![
+            // Front
+            Vertex::builder()
+                .position(Point3::new(-0.5, -0.5, 0.5))
+                .color(Color::WHITE)
+                .normal(Vec3::Z_AXIS)
+                .uv(Vec2::new(0.0, 0.0))
+                .build(),
+            Vertex::builder()
+                .position(Point3::new(0.5, -0.5, 0.5))
+                .color(Color::WHITE)
+                .normal(Vec3::Z_AXIS)
+                .uv(Vec2::new(1.0, 0.0))
+                .build(),
+            Vertex::builder()
+                .position(Point3::new(0.5, 0.5, 0.5))
+                .color(Color::WHITE)
+                .normal(Vec3::Z_AXIS)
+                .uv(Vec2::new(1.0, 1.0))
+                .build(),
+            Vertex::builder()
+                .position(Point3::new(-0.5, 0.5, 0.5))
+                .color(Color::WHITE)
+                .normal(Vec3::Z_AXIS)
+                .uv(Vec2::new(0.0, 1.0))
+                .build(),
+            // Right
+            Vertex::builder()
+                .position(Point3::new(0.5, -0.5, 0.5))
+                .color(Color::WHITE)
+                .normal(Vec3::X_AXIS)
+                .uv(Vec2::new(0.0, 0.0))
+                .build(),
+            Vertex::builder()
+                .position(Point3::new(0.5, -0.5, -0.5))
+                .color(Color::WHITE)
+                .normal(Vec3::X_AXIS)
+                .uv(Vec2::new(1.0, 0.0))
+                .build(),
+            Vertex::builder()
+                .position(Point3::new(0.5, 0.5, -0.5))
+                .color(Color::WHITE)
+                .normal(Vec3::X_AXIS)
+                .uv(Vec2::new(1.0, 1.0))
+                .build(),
+            Vertex::builder()
+                .position(Point3::new(0.5, 0.5, 0.5))
+                .color(Color::WHITE)
+                .normal(Vec3::X_AXIS)
+                .uv(Vec2::new(0.0, 1.0))
+                .build(),
+            // Back
+            Vertex::builder()
+                .position(Point3::new(0.5, -0.5, -0.5))
+                .color(Color::WHITE)
+                .normal(-Vec3::Z_AXIS)
+                .uv(Vec2::new(0.0, 0.0))
+                .build(),
+            Vertex::builder()
+                .position(Point3::new(-0.5, -0.5, -0.5))
+                .color(Color::WHITE)
+                .normal(-Vec3::Z_AXIS)
+                .uv(Vec2::new(1.0, 0.0))
+                .build(),
+            Vertex::builder()
+                .position(Point3::new(-0.5, 0.5, -0.5))
+                .color(Color::WHITE)
+                .normal(-Vec3::Z_AXIS)
+                .uv(Vec2::new(1.0, 1.0))
+                .build(),
+            Vertex::builder()
+                .position(Point3::new(0.5, 0.5, -0.5))
+                .color(Color::WHITE)
+                .normal(-Vec3::Z_AXIS)
+                .uv(Vec2::new(0.0, 1.0))
+                .build(),
+            // Left
+            Vertex::builder()
+                .position(Point3::new(-0.5, -0.5, -0.5))
+                .color(Color::WHITE)
+                .normal(-Vec3::X_AXIS)
+                .uv(Vec2::new(0.0, 0.0))
+                .build(),
+            Vertex::builder()
+                .position(Point3::new(-0.5, -0.5, 0.5))
+                .color(Color::WHITE)
+                .normal(-Vec3::X_AXIS)
+                .uv(Vec2::new(1.0, 0.0))
+                .build(),
+            Vertex::builder()
+                .position(Point3::new(-0.5, 0.5, 0.5))
+                .color(Color::WHITE)
+                .normal(-Vec3::X_AXIS)
+                .uv(Vec2::new(1.0, 1.0))
+                .build(),
+            Vertex::builder()
+                .position(Point3::new(-0.5, 0.5, -0.5))
+                .color(Color::WHITE)
+                .normal(-Vec3::X_AXIS)
+                .uv(Vec2::new(0.0, 1.0))
+                .build(),
+            // Top
+            Vertex::builder()
+                .position(Point3::new(-0.5, 0.5, 0.5))
+                .color(Color::WHITE)
+                .normal(Vec3::Y_AXIS)
+                .uv(Vec2::new(0.0, 0.0))
+                .build(),
+            Vertex::builder()
+                .position(Point3::new(0.5, 0.5, 0.5))
+                .color(Color::WHITE)
+                .normal(Vec3::Y_AXIS)
+                .uv(Vec2::new(1.0, 0.0))
+                .build(),
+            Vertex::builder()
+                .position(Point3::new(0.5, 0.5, -0.5))
+                .color(Color::WHITE)
+                .normal(Vec3::Y_AXIS)
+                .uv(Vec2::new(1.0, 1.0))
+                .build(),
+            Vertex::builder()
+                .position(Point3::new(-0.5, 0.5, -0.5))
+                .color(Color::WHITE)
+                .normal(Vec3::Y_AXIS)
+                .uv(Vec2::new(0.0, 1.0))
+                .build(),
+            // Bottom
+            Vertex::builder()
+                .position(Point3::new(-0.5, -0.5, -0.5))
+                .color(Color::WHITE)
+                .normal(-Vec3::Y_AXIS)
+                .uv(Vec2::new(0.0, 0.0))
+                .build(),
+            Vertex::builder()
+                .position(Point3::new(0.5, -0.5, -0.5))
+                .color(Color::WHITE)
+                .normal(-Vec3::Y_AXIS)
+                .uv(Vec2::new(1.0, 0.0))
+                .build(),
+            Vertex::builder()
+                .position(Point3::new(0.5, -0.5, 0.5))
+                .color(Color::WHITE)
+                .normal(-Vec3::Y_AXIS)
+                .uv(Vec2::new(1.0, 1.0))
+                .build(),
+            Vertex::builder()
+                .position(Point3::new(-0.5, -0.5, 0.5))
+                .color(Color::WHITE)
+                .normal(-Vec3::Y_AXIS)
+                .uv(Vec2::new(0.0, 1.0))
+                .build(),
+        ];
+
+        let indices: Vec<u16> = vec![
+            0, 1, 2, 0, 2, 3, // front face
+            4, 5, 6, 4, 6, 7, // right
+            8, 9, 10, 8, 10, 11, // back
+            12, 13, 14, 12, 14, 15, // left
+            16, 17, 18, 16, 18, 19, // top
+            20, 21, 22, 20, 22, 23, // bottom
+        ];
+
+        let mut ret = Self::new(allocator, &vertices);
+        ret.set_indices(&indices);
+        ret
+    }
 }

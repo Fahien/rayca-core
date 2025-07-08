@@ -136,6 +136,40 @@ where
     }
 }
 
+/// Container of fallback resources for a frame such as
+/// A white 1x1 pixel texture (image, view, and sampler)
+pub struct Fallback {
+    _white_image: RenderImage,
+    _white_view: ImageView,
+    _white_sampler: RenderSampler,
+    pub white_texture: RenderTexture,
+    pub white_buffer: Buffer,
+    pub white_material: Material,
+}
+
+impl Fallback {
+    fn new(dev: &Dev) -> Self {
+        let white = [255, 255, 255, 255];
+        let white_image = RenderImage::from_data(&dev, &white, 1, 1, vk::Format::R8G8B8A8_SRGB);
+        let white_view = ImageView::new(&dev.device.device, &white_image);
+        let white_sampler = RenderSampler::new(&dev.device.device);
+        let white_texture = RenderTexture::new(&white_view, &white_sampler);
+        let mut white_buffer =
+            Buffer::new::<Color>(&dev.allocator, vk::BufferUsageFlags::UNIFORM_BUFFER);
+        white_buffer.upload(&Color::WHITE);
+        let white_material = Material::default();
+
+        Self {
+            _white_image: white_image,
+            _white_view: white_view,
+            _white_sampler: white_sampler,
+            white_texture,
+            white_buffer,
+            white_material,
+        }
+    }
+}
+
 /// The frame cache contains resources that do not need to be recreated
 /// when the swapchain goes out of date
 pub struct FrameCache {
@@ -148,11 +182,16 @@ pub struct FrameCache {
     // Uniform buffers for proj matrices associated to cameras
     pub proj_buffers: BufferCache<Handle<Camera>>,
 
+    pub material_buffers: BufferCache<Handle<Material>>,
+
     pub descriptors: Descriptors,
     pub command_buffer: CommandBuffer,
     pub fence: Fence,
     pub image_ready: Semaphore,
     pub image_drawn: Semaphore,
+
+    pub fallback: Fallback,
+
     pub device: Rc<ash::Device>,
 }
 
@@ -165,11 +204,13 @@ impl FrameCache {
             model_buffers: BufferCache::new(&dev.allocator),
             view_buffers: BufferCache::new(&dev.allocator),
             proj_buffers: BufferCache::new(&dev.allocator),
+            material_buffers: BufferCache::new(&dev.allocator),
             descriptors: Descriptors::new(&dev.device),
             command_buffer,
             fence: Fence::signaled(&dev.device.device),
             image_ready: Semaphore::new(&dev.device.device),
             image_drawn: Semaphore::new(&dev.device.device),
+            fallback: Fallback::new(dev),
             device: dev.device.device.clone(),
         }
     }
@@ -233,6 +274,18 @@ impl Frame {
                 let proj_buffer = self.cache.proj_buffers.get_or_create::<Mat4>(node.camera);
                 proj_buffer.upload(&camera.projection);
             }
+
+            if let Some(mesh) = model.gltf.meshes.get(node.mesh) {
+                if let Some(primitive) = model.gltf.primitives.get(mesh.primitive) {
+                    if let Some(material) = model.gltf.materials.get(primitive.material) {
+                        let color_buffer = self
+                            .cache
+                            .material_buffers
+                            .get_or_create::<Color>(primitive.material);
+                        color_buffer.upload(&material.color);
+                    }
+                }
+            }
         }
         for child in node.children.iter().cloned() {
             self.update_node(child, model);
@@ -279,24 +332,40 @@ impl Frame {
         self.cache.command_buffer.set_scissor(scissor);
     }
 
+    pub fn draw_node(
+        &mut self,
+        cameras: &[Handle<Node>],
+        node_handle: Handle<Node>,
+        model: &RenderModel,
+        pipelines: &[Box<dyn RenderPipeline>],
+    ) {
+        let node = model.gltf.nodes.get(node_handle).unwrap();
+        if let Some(mesh) = model.gltf.meshes.get(node.mesh) {
+            let primitive = model.gltf.primitives.get(mesh.primitive).unwrap();
+            let material = match model.gltf.materials.get(primitive.material) {
+                Some(material) => material,
+                None => &self.cache.fallback.white_material,
+            };
+            let pipeline = &pipelines[material.shader as usize];
+            pipeline.render(self, model, cameras, &[node_handle]);
+        }
+        for child in node.children.iter().cloned() {
+            self.draw_node(cameras, child, model, pipelines);
+        }
+    }
+
     pub fn draw(&mut self, model: &RenderModel, pipelines: &[Box<dyn RenderPipeline>]) {
         // Collect camera handles
-        let mut camera_node_handles = Vec::default();
+        let mut cameras = Vec::default();
         for node_handle in model.gltf.scene.iter().cloned() {
             let node = model.gltf.nodes.get(node_handle).unwrap();
             if node.camera.is_valid() {
-                camera_node_handles.push(node_handle);
+                cameras.push(node_handle);
             }
         }
 
         for node_handle in model.gltf.scene.iter().cloned() {
-            let node = model.gltf.nodes.get(node_handle).unwrap();
-            if let Some(mesh) = model.gltf.meshes.get(node.mesh) {
-                let primitive = model.gltf.primitives.get(mesh.primitive).unwrap();
-                let material = model.gltf.materials.get(primitive.material).unwrap();
-                let pipeline = &pipelines[material.shader as usize];
-                pipeline.render(self, model, &camera_node_handles, &[node_handle]);
-            }
+            self.draw_node(&cameras, node_handle, model, pipelines);
         }
     }
 

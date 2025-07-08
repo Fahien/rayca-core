@@ -92,6 +92,11 @@ impl VertexInput for Vertex {
             vk::VertexInputAttributeDescription::default()
                 .binding(0)
                 .location(2)
+                .format(vk::Format::R32G32B32A32_SFLOAT)
+                .offset(offset_of!(Self, ext.normal) as u32),
+            vk::VertexInputAttributeDescription::default()
+                .binding(0)
+                .location(3)
                 .format(vk::Format::R32G32_SFLOAT)
                 .offset(offset_of!(Self, ext.uv) as u32),
         ]
