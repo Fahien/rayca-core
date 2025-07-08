@@ -263,14 +263,11 @@ impl RenderPrimitive {
     }
 
     pub fn from_gltf(allocator: &Rc<vk_mem::Allocator>, gltf_primitive: &Primitive) -> Self {
-        use rayca_gltf::*;
-
         // Convert vertices
         let mut ret = match gltf_primitive.mode {
             PrimitiveMode::Points => todo!(),
-            PrimitiveMode::Lines => todo!(),
             PrimitiveMode::LineLoop => todo!(),
-            PrimitiveMode::LineStrip => {
+            PrimitiveMode::Lines | PrimitiveMode::LineStrip => {
                 let vertices: Vec<LineVertex> = gltf_primitive
                     .vertices
                     .iter()

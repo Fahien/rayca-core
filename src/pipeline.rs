@@ -194,10 +194,15 @@ impl DefaultPipeline {
         }
     }
 
-    pub fn bind_model_buffer(&self, cache: &mut FrameCache, model: &Model, node: Handle<Node>) {
+    pub fn bind_model_buffer(
+        &self,
+        cache: &mut FrameCache,
+        model: &RenderModel,
+        node: Handle<Node>,
+    ) {
         // A model buffer must already available at this point
         let buffer = cache.model_buffers.get_mut(&node).unwrap();
-        buffer.upload(&model.nodes.get(node).unwrap().trs.to_mat4());
+        buffer.upload(&model.get_node(node).unwrap().trs.to_mat4());
 
         let key = DescriptorKey::builder()
             .layout(self.get_layout())
@@ -271,9 +276,9 @@ impl RenderPipeline for DefaultPipeline {
     ) {
         self.bind(&frame.cache);
         for node_handle in nodes.iter().copied() {
-            self.bind_model_buffer(&mut frame.cache, &model.gltf, node_handle);
-            let node = model.gltf.nodes.get(node_handle).unwrap();
-            let mesh = model.gltf.meshes.get(node.mesh).unwrap();
+            self.bind_model_buffer(&mut frame.cache, model, node_handle);
+            let node = model.get_node(node_handle).unwrap();
+            let mesh = model.get_mesh(node.mesh).unwrap();
             let vertex_buffer = &model.primitives.get(mesh.primitive.id.into()).unwrap();
             self.draw(&frame.cache, vertex_buffer);
         }

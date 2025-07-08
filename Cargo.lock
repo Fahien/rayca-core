@@ -1197,7 +1197,7 @@ dependencies = [
 [[package]]
 name = "rayca-gltf"
 version = "0.1.0"
-source = "git+https://github.com/Fahien/rayca-gltf#6d9b184a635578f26d44b838b087fb81a8e77ab6"
+source = "git+https://github.com/Fahien/rayca-gltf#21b6ce5d30b9489081932bf9f8efed8bc6d90296"
 dependencies = [
  "rayca-geometry",
  "rayca-math",
