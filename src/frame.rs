@@ -4,7 +4,7 @@
 
 use ash::vk;
 use std::{
-    collections::{HashMap, hash_map::Entry},
+    collections::{hash_map::Entry, HashMap},
     rc::Rc,
 };
 
@@ -116,7 +116,8 @@ where
             allocator: allocator.clone(),
         }
     }
-    fn get_or_create<T>(&mut self, key: K) -> &mut Buffer {
+
+    pub fn get_or_create<T>(&mut self, key: K) -> &mut Buffer {
         match self.map.entry(key) {
             Entry::Vacant(e) => {
                 let uniform_buffer =
@@ -170,6 +171,12 @@ impl Fallback {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct NormalMatrixKey {
+    pub node: Handle<Node>,
+    pub view: Handle<Node>,
+}
+
 /// The frame cache contains resources that do not need to be recreated
 /// when the swapchain goes out of date
 pub struct FrameCache {
@@ -183,6 +190,9 @@ pub struct FrameCache {
     pub proj_buffers: BufferCache<Handle<Camera>>,
 
     pub material_buffers: BufferCache<Handle<Material>>,
+
+    // Buffers for normal matrices associated to mesh nodes and camera nodes
+    pub normal_buffers: BufferCache<NormalMatrixKey>,
 
     pub descriptors: Descriptors,
     pub command_buffer: CommandBuffer,
@@ -205,6 +215,7 @@ impl FrameCache {
             view_buffers: BufferCache::new(&dev.allocator),
             proj_buffers: BufferCache::new(&dev.allocator),
             material_buffers: BufferCache::new(&dev.allocator),
+            normal_buffers: BufferCache::new(&dev.allocator),
             descriptors: Descriptors::new(&dev.device),
             command_buffer,
             fence: Fence::signaled(&dev.device.device),
