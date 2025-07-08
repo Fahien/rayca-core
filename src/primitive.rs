@@ -8,10 +8,20 @@ use ash::vk;
 
 use super::*;
 
+fn size_of(index_type: vk::IndexType) -> usize {
+    match index_type {
+        vk::IndexType::UINT16 => std::mem::size_of::<u16>(),
+        vk::IndexType::UINT32 => std::mem::size_of::<u32>(),
+        vk::IndexType::UINT8_EXT => std::mem::size_of::<u8>(),
+        _ => unreachable!(),
+    }
+}
+
 pub struct RenderPrimitive {
     pub vertex_count: u32,
     pub vertices: Buffer,
     pub indices: Option<Buffer>,
+    pub index_type: vk::IndexType,
 }
 
 impl RenderPrimitive {
@@ -20,6 +30,7 @@ impl RenderPrimitive {
             vertex_count: 0,
             vertices: Buffer::new::<T>(allocator, vk::BufferUsageFlags::VERTEX_BUFFER),
             indices: None,
+            index_type: vk::IndexType::UINT16,
         }
     }
 
@@ -33,17 +44,27 @@ impl RenderPrimitive {
             vertex_count,
             vertices,
             indices: None,
+            index_type: vk::IndexType::UINT16,
         }
     }
 
-    pub fn set_indices(&mut self, ii: &[u16]) {
+    pub fn set_indices(&mut self, ii: &[u8], index_type: vk::IndexType) {
         if self.indices.is_none() {
-            self.indices.replace(Buffer::new::<u16>(
+            self.indices.replace(Buffer::new::<u8>(
                 &self.vertices.allocator,
                 vk::BufferUsageFlags::INDEX_BUFFER,
             ));
         }
         self.indices.as_mut().unwrap().upload_arr(ii);
+        self.index_type = index_type;
+    }
+
+    pub fn get_index_count(&self) -> u32 {
+        if let Some(indices) = &self.indices {
+            indices.size as u32 / size_of(self.index_type) as u32
+        } else {
+            0
+        }
     }
 
     /// Returns a new primitive quad with side length 1 centered at the origin
@@ -66,10 +87,10 @@ impl RenderPrimitive {
                 .uv(Vec2::new(0.0, 0.0) * uv_scale)
                 .build(),
         ];
-        let indices = vec![0, 1, 2, 2, 3, 0];
+        let indices: Vec<u16> = vec![0, 1, 2, 2, 3, 0];
 
         let mut ret = Self::new(allocator, &vertices);
-        ret.set_indices(&indices);
+        ret.set_indices(indices.as_bytes(), vk::IndexType::UINT16);
         ret
     }
 
@@ -237,7 +258,94 @@ impl RenderPrimitive {
         ];
 
         let mut ret = Self::new(allocator, &vertices);
-        ret.set_indices(&indices);
+        ret.set_indices(indices.as_bytes(), vk::IndexType::UINT16);
+        ret
+    }
+
+    pub fn from_gltf(allocator: &Rc<vk_mem::Allocator>, gltf_primitive: &Primitive) -> Self {
+        use rayca_gltf::*;
+
+        // Convert vertices
+        let mut ret = match gltf_primitive.mode {
+            PrimitiveMode::Points => todo!(),
+            PrimitiveMode::Lines => todo!(),
+            PrimitiveMode::LineLoop => todo!(),
+            PrimitiveMode::LineStrip => {
+                let vertices: Vec<LineVertex> = gltf_primitive
+                    .vertices
+                    .iter()
+                    .map(LineVertex::from)
+                    .collect();
+                Self::new(allocator, &vertices)
+            }
+            PrimitiveMode::Triangles => Self::new(allocator, &gltf_primitive.vertices),
+            PrimitiveMode::TriangleStrip => todo!(),
+            PrimitiveMode::TriangleFan => todo!(),
+        };
+
+        // Convert indices
+        if let Some(indices) = &gltf_primitive.indices {
+            match indices.index_type {
+                ComponentType::I8 => {
+                    let indices: &[i8] = unsafe {
+                        std::slice::from_raw_parts(
+                            indices.indices.as_ptr() as _,
+                            indices.indices.len(),
+                        )
+                    };
+                    let indices: Vec<u16> = indices.iter().copied().map(|i| i as u16).collect();
+                    ret.set_indices(indices.as_bytes(), vk::IndexType::UINT16)
+                }
+                ComponentType::U8 => {
+                    let indices: Vec<u16> =
+                        indices.indices.iter().copied().map(u16::from).collect();
+                    ret.set_indices(indices.as_bytes(), vk::IndexType::UINT16)
+                }
+                ComponentType::I16 => {
+                    assert_eq!(indices.indices.len() % std::mem::size_of::<i16>(), 0);
+                    let indices: &[i16] = unsafe {
+                        std::slice::from_raw_parts(
+                            indices.indices.as_ptr() as _,
+                            indices.indices.len() / std::mem::size_of::<i16>(),
+                        )
+                    };
+                    let indices: Vec<u16> = indices.iter().copied().map(|i| i as u16).collect();
+                    ret.set_indices(indices.as_bytes(), vk::IndexType::UINT16)
+                }
+                ComponentType::U16 => {
+                    assert_eq!(indices.indices.len() % std::mem::size_of::<u16>(), 0);
+                    let indices: &[u16] = unsafe {
+                        std::slice::from_raw_parts(
+                            indices.indices.as_ptr() as _,
+                            indices.indices.len() / std::mem::size_of::<u16>(),
+                        )
+                    };
+                    ret.set_indices(indices.as_bytes(), vk::IndexType::UINT16)
+                }
+                ComponentType::U32 => {
+                    assert_eq!(indices.indices.len() % std::mem::size_of::<u32>(), 0);
+                    let indices: &[u32] = unsafe {
+                        std::slice::from_raw_parts(
+                            indices.indices.as_ptr() as _,
+                            indices.indices.len() / std::mem::size_of::<u32>(),
+                        )
+                    };
+                    ret.set_indices(indices.as_bytes(), vk::IndexType::UINT32)
+                }
+                ComponentType::F32 => {
+                    assert_eq!(indices.indices.len() % std::mem::size_of::<f32>(), 0);
+                    let indices: &[f32] = unsafe {
+                        std::slice::from_raw_parts(
+                            indices.indices.as_ptr() as _,
+                            indices.indices.len() / std::mem::size_of::<f32>(),
+                        )
+                    };
+                    let indices: Vec<u32> = indices.iter().copied().map(|i| i as u32).collect();
+                    ret.set_indices(indices.as_bytes(), vk::IndexType::UINT32)
+                }
+            }
+        }
+
         ret
     }
 }

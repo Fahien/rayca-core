@@ -124,14 +124,10 @@ impl CommandBuffer {
         }
     }
 
-    pub fn bind_index_buffer(&self, buffer: &Buffer) {
+    pub fn bind_index_buffer(&self, buffer: &Buffer, index_type: vk::IndexType) {
         unsafe {
-            self.device.cmd_bind_index_buffer(
-                self.command_buffer,
-                buffer.buffer,
-                0,
-                vk::IndexType::UINT16,
-            );
+            self.device
+                .cmd_bind_index_buffer(self.command_buffer, buffer.buffer, 0, index_type);
         }
     }
 

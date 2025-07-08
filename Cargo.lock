@@ -1188,7 +1188,7 @@ dependencies = [
 [[package]]
 name = "rayca-geometry"
 version = "0.1.0"
-source = "git+https://github.com/Fahien/rayca-geometry#c268793d190464e576dc492885bec555a59faa35"
+source = "git+https://github.com/Fahien/rayca-geometry#45110ad14196a4decdc0aa4cf238c211fac86fde"
 dependencies = [
  "rayca-math",
  "rayca-util",
@@ -1197,8 +1197,9 @@ dependencies = [
 [[package]]
 name = "rayca-gltf"
 version = "0.1.0"
-source = "git+https://github.com/Fahien/rayca-gltf#e64c97ff39de6d7fbd3d46e8912c64b2bc7b40f4"
+source = "git+https://github.com/Fahien/rayca-gltf#6d9b184a635578f26d44b838b087fb81a8e77ab6"
 dependencies = [
+ "rayca-geometry",
  "rayca-math",
  "rayca-util",
 ]
@@ -1206,7 +1207,7 @@ dependencies = [
 [[package]]
 name = "rayca-math"
 version = "0.1.0"
-source = "git+https://github.com/Fahien/rayca-math#9fc420ec7a7d97362aa375ba3e120c3b1332e17d"
+source = "git+https://github.com/Fahien/rayca-math#0f5163c80f14468374c2bb408d24ea97f2d3ff24"
 dependencies = [
  "num-traits",
  "rand",

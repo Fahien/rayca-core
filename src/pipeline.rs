@@ -5,7 +5,6 @@
 use std::{any::Any, rc::Rc};
 
 use crate::*;
-use ash::vk;
 
 pub trait Pipeline: Any {
     fn as_any(&self) -> &dyn Any;
@@ -25,10 +24,13 @@ pub trait Pipeline: Any {
 
         if let Some(indices) = &primitive.indices {
             // Draw indexed if primitive has indices
-            cache.command_buffer.bind_index_buffer(indices);
+            cache
+                .command_buffer
+                .bind_index_buffer(indices, primitive.index_type);
 
-            let index_count = indices.size as u32 / std::mem::size_of::<u16>() as u32;
-            cache.command_buffer.draw_indexed(index_count, 0, 0);
+            cache
+                .command_buffer
+                .draw_indexed(primitive.get_index_count(), 0, 0);
         } else {
             // Draw without indices
             cache.command_buffer.draw(primitive.vertex_count);
