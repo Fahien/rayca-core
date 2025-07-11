@@ -330,15 +330,17 @@ impl Frame {
         Size2::new(self.buffer.extent.width, self.buffer.extent.height)
     }
 
-    fn update_node(&mut self, node_handle: Handle<Node>, model: &RenderModel) {
+    fn update_node(&mut self, node_handle: Handle<Node>, trs: &Trs, model: &RenderModel) {
         let node = model.get_node(node_handle).unwrap();
+        let world_trs = trs * &node.trs;
+
         if node.mesh.is_valid() || node.camera.is_valid() {
             let uniform_buffer = self.cache.model_buffers.get_or_create::<Mat4>(node_handle);
-            uniform_buffer.upload(&node.trs.to_mat4());
+            uniform_buffer.upload(&world_trs.to_mat4());
 
             if let Some(camera) = model.get_camera(node.camera) {
                 let view_buffer = self.cache.view_buffers.get_or_create::<Mat4>(node_handle);
-                view_buffer.upload(&node.trs.to_view_mat4());
+                view_buffer.upload(&world_trs.get_inversed().to_mat4());
 
                 let proj_buffer = self.cache.proj_buffers.get_or_create::<Mat4>(node.camera);
                 proj_buffer.upload(&camera.projection);
@@ -358,13 +360,14 @@ impl Frame {
             }
         }
         for child in node.children.iter().cloned() {
-            self.update_node(child, model);
+            self.update_node(child, &world_trs, model);
         }
     }
 
     fn update(&mut self, model: &RenderModel) {
+        let trs = model.get_scene().trs.clone();
         for node in model.get_scene().children.iter().cloned() {
-            self.update_node(node, model);
+            self.update_node(node, &trs, model);
         }
     }
 
