@@ -187,7 +187,8 @@ impl ApplicationHandler for Win {
                 ElementState::Released => self.input.mouse.right = ButtonState::JustReleased,
             },
             WindowEvent::CursorMoved { position, .. } => {
-                self.input.mouse.just_moved = true;
+                self.input.mouse.movement.x = position.x as f32 - self.input.mouse.position.x;
+                self.input.mouse.movement.y = position.y as f32 - self.input.mouse.position.y;
                 self.input.mouse.position.x = position.x as f32;
                 self.input.mouse.position.y = position.y as f32;
             }
