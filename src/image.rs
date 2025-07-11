@@ -163,24 +163,18 @@ impl RenderImage {
     }
 
     /// Loads a PNG image from file and uploads it into a sampled image
-    pub fn load<R: std::io::Read>(dev: &Dev, png: &mut Png<R>) -> Self {
-        let staging = Buffer::load(&dev.allocator, png);
+    pub fn load(dev: &Dev, asset: Asset) -> Self {
+        let image_reader = ::image::ImageReader::new(std::io::Cursor::new(asset.data))
+            .with_guessed_format()
+            .expect("Failed to guess image format")
+            .decode()
+            .expect("Failed to decode image");
+        let rgba8_image = image_reader.into_rgba8();
+        let dim = rgba8_image.dimensions();
+        let staging = Buffer::load(&dev.allocator, rgba8_image);
 
-        let png_info = png.reader.info();
-
-        let format = match png_info.color_type {
-            png::ColorType::Grayscale => todo!(),
-            png::ColorType::GrayscaleAlpha => todo!(),
-            png::ColorType::Rgb | png::ColorType::Indexed | png::ColorType::Rgba => {
-                if png_info.srgb.is_some() {
-                    vk::Format::R8G8B8A8_SRGB
-                } else {
-                    vk::Format::R8G8B8A8_UNORM
-                }
-            }
-        };
-
-        let mut image = Self::sampled(&dev.allocator, png_info.width, png_info.height, format);
+        let format = vk::Format::R8G8B8A8_SRGB;
+        let mut image = Self::sampled(&dev.allocator, dim.0, dim.1, format);
         image.simple_copy_from(&staging, dev);
         image
     }

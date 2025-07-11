@@ -235,10 +235,9 @@ impl RenderModel {
 
     fn push_render_image(&mut self, image: &Image, assets: &Assets) {
         let image_asset = assets.load(&image.uri);
-        let mut png = Png::new(image_asset);
-        let vkr_image = RenderImage::load(&self.dev, &mut png);
-        let view = ImageView::new(&self.dev.device.device, &vkr_image);
-        self.images.push(vkr_image);
+        let render_image = RenderImage::load(&self.dev, image_asset);
+        let view = ImageView::new(&self.dev.device.device, &render_image);
+        self.images.push(render_image);
         self.views.push(view);
     }
 

@@ -85,10 +85,10 @@ impl Descriptors {
     pub fn new(device: &Device) -> Self {
         let pool = unsafe {
             let uniform_pool_size = vk::DescriptorPoolSize::default()
-                .descriptor_count(3 * 3) // Support 1 model, 1 view, 1 proj matrix for 3 pipelines
+                .descriptor_count(8 * 3) // Support 8 uniforms for 3 pipelines
                 .ty(vk::DescriptorType::UNIFORM_BUFFER);
             let sampler_pool_size = vk::DescriptorPoolSize::default()
-                .descriptor_count(2 * 3) // Support 2 materials for 3 pipelines
+                .descriptor_count(8 * 3) // Support 8 materials for 3 pipelines
                 .ty(vk::DescriptorType::COMBINED_IMAGE_SAMPLER);
             // Support 4 input attachments
             let input_count = 4;
@@ -99,9 +99,8 @@ impl Descriptors {
             let pool_sizes = vec![uniform_pool_size, sampler_pool_size, input_pool_size];
             let create_info = vk::DescriptorPoolCreateInfo::default()
                 .pool_sizes(&pool_sizes)
-                // @todo Use a parameter instead of 2 for frame count
-                // Support 2 frames with 3 pipelines with 3 descriptor sets
-                .max_sets(2 * 3 * 3);
+                // Support 3 frames with 3 pipelines with 8 descriptor sets
+                .max_sets(8 * 3 * 3);
             device.create_descriptor_pool(&create_info, None)
         }
         .expect("Failed to create Vulkan descriptor pool");

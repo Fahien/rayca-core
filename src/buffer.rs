@@ -77,8 +77,8 @@ impl Buffer {
     }
 
     /// Loads data from a png image in `path` directly into a staging buffer
-    pub fn load<R: std::io::Read>(allocator: &Rc<vk_mem::Allocator>, png: &mut Png<R>) -> Self {
-        let size = png.reader.output_buffer_size();
+    pub fn load(allocator: &Rc<vk_mem::Allocator>, image: ::image::RgbaImage) -> Self {
+        let size = image.len();
         let usage = vk::BufferUsageFlags::TRANSFER_SRC;
 
         // Create staging buffer
@@ -91,8 +91,8 @@ impl Buffer {
         // Allocate the output buffer
         let buf = unsafe { std::slice::from_raw_parts_mut(data, size) };
 
-        // Read the next frame. An APNG might contain multiple frames.
-        png.reader.next_frame(buf).unwrap();
+        let bytes = image.into_vec();
+        buf.copy_from_slice(&bytes);
 
         unsafe { allocator.unmap_memory(&mut allocation) };
 
