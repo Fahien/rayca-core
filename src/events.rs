@@ -58,6 +58,7 @@ impl ButtonState {
 #[derive(Default)]
 pub struct Mouse {
     pub position: Vec2,
+    pub movement: Vec2,
     pub just_moved: bool,
     pub left: ButtonState,
     pub right: ButtonState,
@@ -65,9 +66,7 @@ pub struct Mouse {
 
 impl Mouse {
     pub fn update(&mut self) {
-        if self.just_moved {
-            self.just_moved = false;
-        }
+        self.movement = Vec2::ZERO;
         self.left.update();
         self.right.update();
     }
