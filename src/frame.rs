@@ -15,9 +15,14 @@ use super::*;
 pub struct Framebuffer {
     // @todo Make a map of framebuffers indexed by render-pass as key
     pub framebuffer: vk::Framebuffer,
+
     pub depth_view: ImageView,
     pub depth_image: RenderImage,
-    pub image_view: vk::ImageView,
+
+    pub color_view: ImageView,
+    pub color_image: RenderImage,
+
+    pub swapchain_view: vk::ImageView,
     pub extent: vk::Extent3D,
     device: Rc<ash::Device>,
 }
@@ -25,7 +30,7 @@ pub struct Framebuffer {
 impl Framebuffer {
     pub fn new(dev: &Dev, image: &RenderImage, pass: &Pass) -> Self {
         // Image view into a swapchain images (device, image, format)
-        let image_view = {
+        let swapchain_view = {
             let create_info = vk::ImageViewCreateInfo::default()
                 .image(image.image)
                 .view_type(vk::ImageViewType::TYPE_2D)
@@ -49,6 +54,18 @@ impl Framebuffer {
                 .expect("Failed to create Vulkan image view")
         };
 
+        // Color image with the same settings as the swapchain image
+        let mut color_image = RenderImage::attachment(
+            &dev.allocator,
+            image.extent.width,
+            image.extent.height,
+            image.format,
+        );
+        color_image.transition(&dev, vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+
+        let color_view = ImageView::new(&dev.device.device, &color_image);
+
+        // Depth image
         let depth_format = vk::Format::D32_SFLOAT;
         let mut depth_image = RenderImage::attachment(
             &dev.allocator,
@@ -60,9 +77,9 @@ impl Framebuffer {
 
         let depth_view = ImageView::new(&dev.device.device, &depth_image);
 
-        // Framebuffers (image_view, renderpass)
+        // Framebuffers (image_views, renderpass)
         let framebuffer = {
-            let attachments = [image_view, depth_view.view];
+            let attachments = [swapchain_view, depth_view.view, color_view.view];
 
             let create_info = vk::FramebufferCreateInfo::default()
                 .render_pass(pass.render)
@@ -79,7 +96,9 @@ impl Framebuffer {
             framebuffer,
             depth_view,
             depth_image,
-            image_view,
+            color_view,
+            color_image,
+            swapchain_view,
             extent: image.extent,
             device: dev.device.device.clone(),
         }
@@ -93,7 +112,7 @@ impl Drop for Framebuffer {
                 .device_wait_idle()
                 .expect("Failed to wait for device");
             self.device.destroy_framebuffer(self.framebuffer, None);
-            self.device.destroy_image_view(self.image_view, None);
+            self.device.destroy_image_view(self.swapchain_view, None);
         }
     }
 }
@@ -142,10 +161,13 @@ where
 pub struct Fallback {
     _white_image: RenderImage,
     _white_view: ImageView,
-    _white_sampler: RenderSampler,
+    pub white_sampler: RenderSampler,
     pub white_texture: RenderTexture,
     pub white_buffer: Buffer,
     pub white_material: Material,
+
+    /// A triangle that covers the whole screen
+    pub present_primitive: RenderPrimitive,
 }
 
 impl Fallback {
@@ -160,13 +182,22 @@ impl Fallback {
         white_buffer.upload(&Color::WHITE);
         let white_material = Material::default();
 
+        // Y pointing down
+        let present_vertices = vec![
+            PresentVertex::new(-1.0, -1.0),
+            PresentVertex::new(-1.0, 3.0),
+            PresentVertex::new(3.0, -1.0),
+        ];
+        let present_primitive = RenderPrimitive::new(&dev.allocator, &present_vertices);
+
         Self {
             _white_image: white_image,
             _white_view: white_view,
-            _white_sampler: white_sampler,
+            white_sampler,
             white_texture,
             white_buffer,
             white_material,
+            present_primitive,
         }
     }
 }
@@ -358,7 +389,7 @@ impl Frame {
                 None => &self.cache.fallback.white_material,
             };
             let pipeline = &pipelines[material.shader as usize];
-            pipeline.render(self, model, cameras, &[node_handle]);
+            pipeline.render(self, Some(model), cameras, &[node_handle]);
         }
         for child in node.children.iter().cloned() {
             self.draw_node(cameras, child, model, pipelines);
@@ -380,7 +411,12 @@ impl Frame {
         }
     }
 
-    pub fn end(&self) {
+    pub fn end_scene(&mut self, pipeline: &dyn RenderPipeline) {
+        self.cache.command_buffer.next_subpass();
+        pipeline.render(self, None, &[], &[]);
+    }
+
+    fn end(&self) {
         self.cache.command_buffer.end_render_pass();
         self.cache.command_buffer.end();
     }
@@ -391,6 +427,8 @@ impl Frame {
         swapchain: &Swapchain,
         image_index: u32,
     ) -> Result<(), vk::Result> {
+        self.end();
+
         dev.graphics_queue.submit_draw(
             &self.cache.command_buffer,
             &self.cache.image_ready,
