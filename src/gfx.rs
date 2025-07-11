@@ -10,6 +10,7 @@ use crate::*;
 pub struct Vkr {
     pub present_pipeline: PipelinePresent,
     pub normal_pipeline: PipelineNormal,
+    pub depth_pipeline: PipelineDepth,
     pub frames: SwapchainFrames,
     pub pass: Pass,
     pub dev: Rc<Dev>,
@@ -54,6 +55,11 @@ impl Vkr {
             &win.android_app,
             &pass,
         );
+        let depth_pipeline = PipelineDepth::new::<PresentVertex>(
+            #[cfg(target_os = "android")]
+            &win.android_app,
+            &pass,
+        );
 
         Self {
             events: Some(events),
@@ -66,6 +72,7 @@ impl Vkr {
             frames,
             present_pipeline,
             normal_pipeline,
+            depth_pipeline,
         }
     }
 

@@ -91,7 +91,11 @@ impl Pass {
             .attachment(3)
             .layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 
-        let input_refs = [color_input_ref, normal_input_ref];
+        let depth_input_ref = ash::vk::AttachmentReference::default()
+            .attachment(1)
+            .layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+
+        let input_refs = [color_input_ref, normal_input_ref, depth_input_ref];
 
         // Two subpasses
         let subpasses = [
