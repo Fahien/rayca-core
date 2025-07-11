@@ -5,6 +5,19 @@
 use std::any::Any;
 
 use crate::*;
+use rayca_pipe::*;
+
+pipewriter!(
+    Present,
+    "shaders/present.vert.slang",
+    "shaders/present.frag.slang"
+);
+
+pipewriter!(
+    Normal,
+    "shaders/present.vert.slang",
+    "shaders/normal.frag.slang"
+);
 
 pub trait Pipeline: Any {
     fn as_any(&self) -> &dyn Any;
@@ -44,7 +57,7 @@ pub trait RenderPipeline: Pipeline {
     fn render(
         &self,
         frame: &mut Frame,
-        model: &RenderModel,
+        model: Option<&RenderModel>,
         camera_nodes: &[Handle<Node>],
         nodes: &[Handle<Node>],
     );
@@ -53,4 +66,72 @@ pub trait RenderPipeline: Pipeline {
 pub trait PipelinePool {
     /// Returns the render pipeline at position `index`
     fn get_at(&self, index: u32) -> &dyn RenderPipeline;
+}
+
+impl RenderPipeline for PipelinePresent {
+    fn render(
+        &self,
+        frame: &mut Frame,
+        _model: Option<&RenderModel>,
+        _camera_nodes: &[Handle<Node>],
+        _nodes: &[Handle<Node>],
+    ) {
+        self.bind(&frame.cache);
+
+        let color_view_handle = vk::Handle::as_raw(frame.buffer.color_view.view);
+        let key = DescriptorKey::builder()
+            .layout(self.get_layout())
+            .node(Handle::new(color_view_handle as _))
+            .build();
+        let color_texture = RenderTexture::new(
+            &frame.buffer.color_view,
+            &frame.cache.fallback.white_sampler,
+        );
+        let normal_texture = RenderTexture::new(
+            &frame.buffer.normal_view,
+            &frame.cache.fallback.white_sampler,
+        );
+        self.bind_color_and_normal(
+            &frame.cache.command_buffer,
+            &mut frame.cache.descriptors,
+            key,
+            &color_texture,
+            &normal_texture,
+        );
+        self.draw(&frame.cache, &frame.cache.fallback.present_primitive);
+    }
+}
+
+impl RenderPipeline for PipelineNormal {
+    fn render(
+        &self,
+        frame: &mut Frame,
+        _model: Option<&RenderModel>,
+        _camera_nodes: &[Handle<Node>],
+        _nodes: &[Handle<Node>],
+    ) {
+        self.bind(&frame.cache);
+
+        let color_view_handle = vk::Handle::as_raw(frame.buffer.color_view.view);
+        let key = DescriptorKey::builder()
+            .layout(self.get_layout())
+            .node(Handle::new(color_view_handle as _))
+            .build();
+        let color_texture = RenderTexture::new(
+            &frame.buffer.color_view,
+            &frame.cache.fallback.white_sampler,
+        );
+        let normal_texture = RenderTexture::new(
+            &frame.buffer.normal_view,
+            &frame.cache.fallback.white_sampler,
+        );
+        self.bind_color_and_normal(
+            &frame.cache.command_buffer,
+            &mut frame.cache.descriptors,
+            key,
+            &color_texture,
+            &normal_texture,
+        );
+        self.draw(&frame.cache, &frame.cache.fallback.present_primitive);
+    }
 }

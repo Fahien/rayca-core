@@ -1275,6 +1275,7 @@ dependencies = [
  "raw-window-metal",
  "rayca-geometry",
  "rayca-gltf",
+ "rayca-pipe",
  "slang",
  "vk-mem",
  "winit",
@@ -1309,6 +1310,17 @@ dependencies = [
  "num-traits",
  "rand",
  "serde",
+]
+
+[[package]]
+name = "rayca-pipe"
+version = "0.0.1"
+source = "git+https://github.com/Fahien/rayca-pipe#386ff37058da90af53c19003f439dc27d41e0000"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "slang",
+ "syn",
 ]
 
 [[package]]

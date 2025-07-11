@@ -12,6 +12,7 @@ winit = { version = "0.30.*", features = [ "android-native-activity" ] }
 ash = "0.38.*"
 rayca-geometry = { git = "https://github.com/Fahien/rayca-geometry" }
 rayca-gltf = { git = "https://github.com/Fahien/rayca-gltf" }
+rayca-pipe = { git = "https://github.com/Fahien/rayca-pipe" }
 vk-mem = "0.4.*"
 png = "0.17.*"
 

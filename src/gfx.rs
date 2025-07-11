@@ -8,6 +8,8 @@ use std::rc::Rc;
 use crate::*;
 
 pub struct Vkr {
+    pub present_pipeline: PipelinePresent,
+    pub normal_pipeline: PipelineNormal,
     pub frames: SwapchainFrames,
     pub pass: Pass,
     pub dev: Rc<Dev>,
@@ -42,6 +44,17 @@ impl Vkr {
 
         let frames = SwapchainFrames::new(&ctx, &surface, &dev, win.size, &pass);
 
+        let present_pipeline = PipelinePresent::new::<PresentVertex>(
+            #[cfg(target_os = "android")]
+            &win.android_app,
+            &pass,
+        );
+        let normal_pipeline = PipelineNormal::new::<PresentVertex>(
+            #[cfg(target_os = "android")]
+            &win.android_app,
+            &pass,
+        );
+
         Self {
             events: Some(events),
             ctx,
@@ -51,6 +64,8 @@ impl Vkr {
             dev,
             pass,
             frames,
+            present_pipeline,
+            normal_pipeline,
         }
     }
 

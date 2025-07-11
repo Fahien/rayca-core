@@ -25,11 +25,17 @@ pub trait VertexInput {
     }
 
     fn get_color_blend() -> Vec<vk::PipelineColorBlendAttachmentState> {
-        vec![
+        let mut ret = vec![
             vk::PipelineColorBlendAttachmentState::default()
-                .blend_enable(false)
-                .color_write_mask(vk::ColorComponentFlags::RGBA),
-        ]
+                .blend_enable(true)
+                .color_write_mask(vk::ColorComponentFlags::RGBA)
+                .src_color_blend_factor(vk::BlendFactor::ONE)
+                .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_ALPHA),
+        ];
+        if Self::get_subpass() == 0 {
+            ret.push(ret[0]);
+        }
+        ret
     }
 
     fn get_subpass() -> u32 {
@@ -100,6 +106,72 @@ impl VertexInput for Vertex {
                 .format(vk::Format::R32G32_SFLOAT)
                 .offset(offset_of!(Self, ext.uv) as u32),
         ]
+    }
+}
+
+/// Very simple vertex used for the presentation pass
+#[repr(C)]
+pub struct PresentVertex {
+    /// The shader just needs x and y
+    pub pos: Vec2,
+}
+
+impl PresentVertex {
+    pub fn new(x: f32, y: f32) -> Self {
+        Self {
+            pos: Vec2::new(x, y),
+        }
+    }
+
+    pub fn write_set(
+        device: &ash::Device,
+        set: vk::DescriptorSet,
+        albedo: &ImageView,
+        sampler: &RenderSampler,
+    ) {
+        let image_info = [vk::DescriptorImageInfo::default()
+            .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+            .image_view(albedo.view)
+            .sampler(sampler.sampler)];
+
+        let image_write = vk::WriteDescriptorSet::default()
+            .dst_set(set)
+            .dst_binding(0)
+            .dst_array_element(0)
+            .descriptor_type(vk::DescriptorType::INPUT_ATTACHMENT)
+            .image_info(&image_info);
+
+        let writes = vec![image_write];
+
+        unsafe {
+            device.update_descriptor_sets(&writes, &[]);
+        }
+    }
+}
+
+impl VertexInput for PresentVertex {
+    fn get_bindings() -> Vec<vk::VertexInputBindingDescription> {
+        vec![
+            vk::VertexInputBindingDescription::default()
+                .binding(0)
+                .stride(std::mem::size_of::<Self>() as u32)
+                .input_rate(vk::VertexInputRate::VERTEX),
+        ]
+    }
+
+    fn get_attributes() -> Vec<vk::VertexInputAttributeDescription> {
+        vec![
+            // position
+            vk::VertexInputAttributeDescription::default()
+                .binding(0)
+                .location(0)
+                .format(vk::Format::R32G32_SFLOAT)
+                .offset(offset_of!(Self, pos) as u32),
+        ]
+    }
+
+    fn get_subpass() -> u32 {
+        1
     }
 }
 

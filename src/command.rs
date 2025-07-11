@@ -48,14 +48,20 @@ impl CommandBuffer {
                     .height(area.height),
             );
 
-        let mut color_clear = vk::ClearValue::default();
-        color_clear.color.float32 = [0.0, 10.0 / 255.0, 28.0 / 255.0, 1.0];
+        let mut present_clear = vk::ClearValue::default();
+        present_clear.color.float32 = [0.0, 10.0 / 255.0, 28.0 / 255.0, 1.0];
 
         let mut depth_clear = vk::ClearValue::default();
         depth_clear.depth_stencil.depth = 0.0;
         depth_clear.depth_stencil.stencil = 0;
 
-        let clear_values = [color_clear, depth_clear];
+        let mut color_clear = vk::ClearValue::default();
+        color_clear.color.float32 = [0.0, 0.0, 0.0, 1.0];
+
+        let mut normal_clear = vk::ClearValue::default();
+        normal_clear.color.float32 = [0.0, 0.0, 0.0, 1.0];
+
+        let clear_values = [present_clear, depth_clear, color_clear, normal_clear];
         let create_info = vk::RenderPassBeginInfo::default()
             .framebuffer(framebuffer.framebuffer)
             .render_pass(pass.render)
@@ -66,6 +72,13 @@ impl CommandBuffer {
         unsafe {
             self.device
                 .cmd_begin_render_pass(self.command_buffer, &create_info, contents)
+        };
+    }
+
+    pub fn next_subpass(&self) {
+        unsafe {
+            self.device
+                .cmd_next_subpass(self.command_buffer, vk::SubpassContents::INLINE)
         };
     }
 

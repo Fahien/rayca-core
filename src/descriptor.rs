@@ -90,8 +90,13 @@ impl Descriptors {
             let sampler_pool_size = vk::DescriptorPoolSize::default()
                 .descriptor_count(2 * 3) // Support 2 materials for 3 pipelines
                 .ty(vk::DescriptorType::COMBINED_IMAGE_SAMPLER);
+            // Support 4 input attachments
+            let input_count = 4;
+            let input_pool_size = vk::DescriptorPoolSize::default()
+                .descriptor_count(input_count)
+                .ty(vk::DescriptorType::INPUT_ATTACHMENT);
 
-            let pool_sizes = vec![uniform_pool_size, sampler_pool_size];
+            let pool_sizes = vec![uniform_pool_size, sampler_pool_size, input_pool_size];
             let create_info = vk::DescriptorPoolCreateInfo::default()
                 .pool_sizes(&pool_sizes)
                 // @todo Use a parameter instead of 2 for frame count
