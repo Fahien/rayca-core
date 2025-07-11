@@ -10,9 +10,10 @@ use crate::*;
 pub struct Vkr {
     pub frames: SwapchainFrames,
     pub pass: Pass,
-    pub dev: Dev,
+    pub dev: Rc<Dev>,
     pub surface: Surface,
     pub debug: Debug,
+    pub assets: Assets,
     pub ctx: Ctx,
     pub events: Option<Events>,
 }
@@ -22,6 +23,10 @@ impl Vkr {
         let mut events = Events::new(win);
         let ctx = Ctx::builder().win(win).build();
         let debug = Debug::new(&ctx);
+        let assets = Assets::new(
+            #[cfg(target_os = "android")]
+            win.android_app.clone(),
+        );
 
         // Pump events to ensure the window is created and ready
         loop {
@@ -32,7 +37,7 @@ impl Vkr {
         }
 
         let surface = Surface::new(&win, &ctx);
-        let dev = Dev::new(&ctx, Some(&surface));
+        let dev = Rc::new(Dev::new(&ctx, Some(&surface)));
         let pass = Pass::new(&dev);
 
         let frames = SwapchainFrames::new(&ctx, &surface, &dev, win.size, &pass);
@@ -41,6 +46,7 @@ impl Vkr {
             events: Some(events),
             ctx,
             debug,
+            assets,
             surface,
             dev,
             pass,

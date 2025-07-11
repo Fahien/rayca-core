@@ -113,11 +113,11 @@ pub struct RenderModel {
     pub primitives: Pack<RenderPrimitive>,
 
     /// Useful for constructing the model continuously
-    allocator: Rc<vk_mem::Allocator>,
+    dev: Rc<Dev>,
 }
 
 impl RenderModel {
-    pub fn new(allocator: &Rc<vk_mem::Allocator>) -> Self {
+    pub fn new(dev: &Rc<Dev>) -> Self {
         Self {
             gltf: Default::default(),
             images: Pack::new(),
@@ -125,7 +125,7 @@ impl RenderModel {
             samplers: Pack::new(),
             textures: Pack::new(),
             primitives: Pack::new(),
-            allocator: allocator.clone(),
+            dev: dev.clone(),
         }
     }
 
@@ -141,13 +141,37 @@ impl RenderModel {
         self.gltf.scene.children.push(node)
     }
 
+    pub fn push_image(&mut self, image: Image, assets: &Assets) -> Handle<Image> {
+        let image_asset = assets.load(&image.uri);
+        let mut png = Png::new(image_asset);
+        let vkr_image = RenderImage::load(&self.dev, &mut png);
+        let view = ImageView::new(&self.dev.device.device, &vkr_image);
+        self.images.push(vkr_image);
+        self.views.push(view);
+        self.gltf.images.push(image)
+    }
+
+    pub fn push_sampler(&mut self, sampler: Sampler) -> Handle<Sampler> {
+        self.samplers
+            .push(RenderSampler::new(&self.dev.device.device));
+        self.gltf.samplers.push(sampler)
+    }
+
+    pub fn push_texture(&mut self, texture: Texture) -> Handle<Texture> {
+        let view = self.views.get(texture.image.id.into()).unwrap();
+        let sampler = self.samplers.get(texture.sampler.id.into()).unwrap();
+        let vkr_texture = RenderTexture::new(&view, &sampler);
+        self.textures.push(vkr_texture);
+        self.gltf.textures.push(texture)
+    }
+
     pub fn push_material(&mut self, material: Material) -> Handle<Material> {
         self.gltf.materials.push(material)
     }
 
     pub fn push_primitive(&mut self, primitive: Primitive) -> Handle<Primitive> {
         self.primitives
-            .push(RenderPrimitive::from_gltf(&self.allocator, &primitive));
+            .push(RenderPrimitive::from_gltf(&self.dev.allocator, &primitive));
         self.gltf.primitives.push(primitive)
     }
 
