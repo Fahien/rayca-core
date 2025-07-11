@@ -1315,7 +1315,7 @@ dependencies = [
 [[package]]
 name = "rayca-pipe"
 version = "0.0.1"
-source = "git+https://github.com/Fahien/rayca-pipe#785c2de954c4a68085a317b8afe5b5e3966bc0a8"
+source = "git+https://github.com/Fahien/rayca-pipe#2764e7596ddda92ffcb4f0d2419bf2274bb94359"
 dependencies = [
  "proc-macro2",
  "quote",

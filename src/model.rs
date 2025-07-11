@@ -201,6 +201,26 @@ impl RenderModel {
         }
     }
 
+    pub fn new_with_gltf(dev: &Rc<Dev>, assets: &Assets, gltf: Model) -> Self {
+        let mut ret = Self::new(dev);
+
+        for image in gltf.images.iter() {
+            ret.push_render_image(image, assets);
+        }
+        for sampler in gltf.samplers.iter() {
+            ret.push_render_sampler(sampler);
+        }
+        for texture in gltf.textures.iter() {
+            ret.push_render_texture(texture);
+        }
+        for primitive in gltf.primitives.iter() {
+            ret.push_render_primitive(primitive);
+        }
+
+        ret.gltf = gltf;
+        ret
+    }
+
     pub fn push_camera(&mut self, camera: Camera) -> Handle<Camera> {
         self.gltf.cameras.push(camera)
     }
@@ -213,27 +233,42 @@ impl RenderModel {
         self.gltf.scene.children.push(node)
     }
 
-    pub fn push_image(&mut self, image: Image, assets: &Assets) -> Handle<Image> {
+    fn push_render_image(&mut self, image: &Image, assets: &Assets) {
         let image_asset = assets.load(&image.uri);
         let mut png = Png::new(image_asset);
         let vkr_image = RenderImage::load(&self.dev, &mut png);
         let view = ImageView::new(&self.dev.device.device, &vkr_image);
         self.images.push(vkr_image);
         self.views.push(view);
+    }
+
+    pub fn push_image(&mut self, image: Image, assets: &Assets) -> Handle<Image> {
+        self.push_render_image(&image, assets);
         self.gltf.images.push(image)
     }
 
+    fn push_render_sampler(&mut self, _sampler: &Sampler) {
+        let sampler = RenderSampler::new(&self.dev.device.device);
+        self.samplers.push(sampler);
+    }
+
     pub fn push_sampler(&mut self, sampler: Sampler) -> Handle<Sampler> {
-        self.samplers
-            .push(RenderSampler::new(&self.dev.device.device));
+        self.push_render_sampler(&sampler);
         self.gltf.samplers.push(sampler)
     }
 
-    pub fn push_texture(&mut self, texture: Texture) -> Handle<Texture> {
+    fn push_render_texture(&mut self, texture: &Texture) {
         let view = self.views.get(texture.image.id.into()).unwrap();
-        let sampler = self.samplers.get(texture.sampler.id.into()).unwrap();
-        let vkr_texture = RenderTexture::new(&view, &sampler);
-        self.textures.push(vkr_texture);
+        let sampler = match self.samplers.get(texture.sampler.id.into()) {
+            Some(s) => s,
+            None => &self.dev.fallback.as_ref().unwrap().white_sampler,
+        };
+        let texture = RenderTexture::new(&view, &sampler);
+        self.textures.push(texture);
+    }
+
+    pub fn push_texture(&mut self, texture: Texture) -> Handle<Texture> {
+        self.push_render_texture(&texture);
         self.gltf.textures.push(texture)
     }
 
@@ -241,9 +276,13 @@ impl RenderModel {
         self.gltf.materials.push(material)
     }
 
-    pub fn push_primitive(&mut self, primitive: Primitive) -> Handle<Primitive> {
+    fn push_render_primitive(&mut self, primitive: &Primitive) {
         self.primitives
             .push(RenderPrimitive::from_gltf(&self.dev.allocator, &primitive));
+    }
+
+    pub fn push_primitive(&mut self, primitive: Primitive) -> Handle<Primitive> {
+        self.push_render_primitive(&primitive);
         self.gltf.primitives.push(primitive)
     }
 

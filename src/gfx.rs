@@ -137,6 +137,8 @@ impl Vkr {
 }
 
 pub struct Dev {
+    /// Using an option for dropping it by replacing it with None
+    pub fallback: Option<Fallback>,
     pub surface_format: vk::SurfaceFormatKHR,
     pub graphics_command_pool: CommandPool,
     pub graphics_queue: Queue,
@@ -173,20 +175,25 @@ impl Dev {
         }
         println!("Surface format: {:?}", surface_format.format);
 
-        let allocator = {
-            let create_info =
-                vk_mem::AllocatorCreateInfo::new(&ctx.instance, &device, device.physical);
-            unsafe { vk_mem::Allocator::new(create_info) }
-        }
-        .expect("Failed to create Vulkan allocator");
+        let allocator = Rc::new(
+            {
+                let create_info =
+                    vk_mem::AllocatorCreateInfo::new(&ctx.instance, &device, device.physical);
+                unsafe { vk_mem::Allocator::new(create_info) }
+            }
+            .expect("Failed to create Vulkan allocator"),
+        );
 
-        Self {
+        let mut ret = Self {
+            fallback: None,
             surface_format,
             graphics_command_pool,
             graphics_queue,
-            allocator: Rc::new(allocator),
+            allocator,
             device,
-        }
+        };
+        ret.fallback.replace(Fallback::new(&ret));
+        ret
     }
 
     pub fn wait(&self) {
@@ -201,6 +208,7 @@ impl Dev {
 impl Drop for Dev {
     fn drop(&mut self) {
         self.wait();
+        self.fallback.take();
         assert_eq!(Rc::strong_count(&self.allocator), 1);
         self.graphics_command_pool.destroy();
     }
