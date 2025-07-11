@@ -78,6 +78,7 @@ impl RenderImage {
         width: u32,
         height: u32,
         format: vk::Format,
+        usage: vk::ImageUsageFlags,
     ) -> Self {
         let allocator = allocator.clone();
 
@@ -86,13 +87,6 @@ impl RenderImage {
             .width(width.max(1))
             .height(height.max(1))
             .depth(1);
-
-        let usage = if Self::is_depth_format(format) {
-            vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT
-        } else {
-            // Default usage is as a texture
-            vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED
-        };
 
         let image_info = vk::ImageCreateInfo::default()
             .image_type(vk::ImageType::TYPE_2D)
@@ -127,20 +121,53 @@ impl RenderImage {
         }
     }
 
+    /// Create an image that can be used as an input or output attachment
+    pub fn attachment(
+        allocator: &Rc<vk_mem::Allocator>,
+        width: u32,
+        height: u32,
+        format: vk::Format,
+    ) -> Self {
+        let usage = if Self::is_depth_format(format) {
+            vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT | vk::ImageUsageFlags::INPUT_ATTACHMENT
+        } else {
+            vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::INPUT_ATTACHMENT
+        };
+        Self::new(allocator, width, height, format, usage)
+    }
+
+    /// Create an image that can be used to upload data from disk and sampled from a fragment shader
+    pub fn sampled(
+        allocator: &Rc<vk_mem::Allocator>,
+        width: u32,
+        height: u32,
+        format: vk::Format,
+    ) -> Self {
+        Self::new(
+            allocator,
+            width,
+            height,
+            format,
+            vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
+        )
+    }
+
+    /// Creates a new image from raw data uploading it into a sampled image
     pub fn from_data(dev: &Dev, data: &[u8], width: u32, height: u32, format: vk::Format) -> Self {
-        let mut image = Self::new(&dev.allocator, width, height, format);
+        let mut image = Self::sampled(&dev.allocator, width, height, format);
         let usage = vk::BufferUsageFlags::TRANSFER_SRC;
         let staging = Buffer::from_data(&dev.allocator, data, usage);
         image.simple_copy_from(&staging, dev);
         image
     }
 
+    /// Loads a PNG image from file and uploads it into a sampled image
     pub fn load<R: std::io::Read>(dev: &Dev, png: &mut Png<R>) -> Self {
         let staging = Buffer::load(&dev.allocator, png);
 
         let png_info = png.reader.info();
 
-        let mut image = Self::new(
+        let mut image = Self::sampled(
             &dev.allocator,
             png_info.width,
             png_info.height,
