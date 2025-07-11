@@ -230,7 +230,7 @@ impl RenderModel {
     }
 
     pub fn push_to_scene(&mut self, node: Handle<Node>) {
-        self.gltf.scene.push(node)
+        self.gltf.scene.children.push(node)
     }
 
     fn push_render_image(&mut self, image: &Image, assets: &Assets) {
@@ -334,8 +334,12 @@ impl RenderModel {
         self.gltf.materials.get_mut(material)
     }
 
-    pub fn get_scene(&self) -> &[Handle<Node>] {
+    pub fn get_scene(&self) -> &Node {
         &self.gltf.scene
+    }
+
+    pub fn get_scene_mut(&mut self) -> &mut Node {
+        &mut self.gltf.scene
     }
 
     pub fn get_gltf_mut(&mut self) -> &mut Model {

@@ -363,7 +363,7 @@ impl Frame {
     }
 
     fn update(&mut self, model: &RenderModel) {
-        for node in model.get_scene().iter().cloned() {
+        for node in model.get_scene().children.iter().cloned() {
             self.update_node(node, model);
         }
     }
@@ -442,14 +442,14 @@ impl Frame {
     pub fn draw(&mut self, model: &RenderModel, pipelines: &[Box<dyn RenderPipeline>]) {
         // Collect camera handles
         let mut cameras = Vec::default();
-        for node_handle in model.get_scene().iter().cloned() {
+        for node_handle in model.get_scene().children.iter().cloned() {
             let node = model.get_node(node_handle).unwrap();
             if node.camera.is_valid() {
                 cameras.push(node_handle);
             }
         }
 
-        for node_handle in model.get_scene().iter().cloned() {
+        for node_handle in model.get_scene().children.iter().cloned() {
             self.draw_node(&cameras, node_handle, model, pipelines);
         }
     }
