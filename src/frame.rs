@@ -193,7 +193,7 @@ pub struct Fallback {
 }
 
 impl Fallback {
-    fn new(dev: &Dev) -> Self {
+    pub fn new(dev: &Dev) -> Self {
         let white = [255, 255, 255, 255];
         let white_image = RenderImage::from_data(&dev, &white, 1, 1, vk::Format::R8G8B8A8_SRGB);
         let white_view = ImageView::new(&dev.device.device, &white_image);
@@ -261,8 +261,6 @@ pub struct FrameCache {
     /// is waiting on this sempahore before presenting the back-buffer to screen.
     pub image_drawn: Semaphore,
 
-    pub fallback: Fallback,
-
     pub device: Rc<ash::Device>,
 }
 
@@ -282,7 +280,6 @@ impl FrameCache {
             fence: Fence::signaled(&dev.device.device),
             image_ready: Semaphore::new(&dev.device.device),
             image_drawn: Semaphore::new(&dev.device.device),
-            fallback: Fallback::new(dev),
             device: dev.device.device.clone(),
         }
     }
@@ -306,14 +303,14 @@ pub struct Frame {
     pub cache: FrameCache,
 
     /// A frame should be able to allocate a uniform buffer on draw
-    pub device: Rc<ash::Device>,
+    pub dev: Rc<Dev>,
 }
 
 impl Frame {
     pub fn new(
         id: usize,
         in_flight_count: usize,
-        dev: &Dev,
+        dev: &Rc<Dev>,
         image: &RenderImage,
         pass: &Pass,
     ) -> Self {
@@ -325,7 +322,7 @@ impl Frame {
             in_flight_count,
             buffer,
             cache,
-            device: dev.device.device.clone(),
+            dev: dev.clone(),
         }
     }
 
@@ -418,7 +415,7 @@ impl Frame {
                 let primitive = model.get_primitive(primitive_handle).unwrap();
                 let material = match model.get_material(primitive.material) {
                     Some(material) => material,
-                    None => &self.cache.fallback.white_material,
+                    None => &self.dev.fallback.as_ref().unwrap().white_material,
                 };
                 let pipeline = &pipelines[material.shader as usize];
                 pipeline.render(self, Some(model), cameras, &[node_handle]);
@@ -477,7 +474,9 @@ impl Frame {
 impl Drop for Frame {
     fn drop(&mut self) {
         unsafe {
-            self.device
+            self.dev
+                .device
+                .device
                 .device_wait_idle()
                 .expect("Failed to wait for device");
         }
@@ -515,7 +514,7 @@ pub struct SwapchainFrames {
 }
 
 impl SwapchainFrames {
-    pub fn new(ctx: &Ctx, surface: &Surface, dev: &Dev, size: Size2, pass: &Pass) -> Self {
+    pub fn new(ctx: &Ctx, surface: &Surface, dev: &Rc<Dev>, size: Size2, pass: &Pass) -> Self {
         let swapchain = Swapchain::new(ctx, surface, dev, size, None);
 
         let mut frames = Vec::new();

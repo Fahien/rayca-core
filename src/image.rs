@@ -13,7 +13,8 @@ pub struct Png<R: std::io::Read> {
 impl<R: std::io::Read> Png<R> {
     /// Creates a png decoder without loading data yet
     pub fn new(read: R) -> Self {
-        let decoder = png::Decoder::new(read);
+        let mut decoder = png::Decoder::new(read);
+        decoder.set_transformations(png::Transformations::STRIP_16 | png::Transformations::ALPHA);
         let reader = decoder.read_info().unwrap();
         Self { reader }
     }
@@ -167,12 +168,19 @@ impl RenderImage {
 
         let png_info = png.reader.info();
 
-        let mut image = Self::sampled(
-            &dev.allocator,
-            png_info.width,
-            png_info.height,
-            vk::Format::R8G8B8A8_SRGB,
-        );
+        let format = match png_info.color_type {
+            png::ColorType::Grayscale => todo!(),
+            png::ColorType::GrayscaleAlpha => todo!(),
+            png::ColorType::Rgb | png::ColorType::Indexed | png::ColorType::Rgba => {
+                if png_info.srgb.is_some() {
+                    vk::Format::R8G8B8A8_SRGB
+                } else {
+                    vk::Format::R8G8B8A8_UNORM
+                }
+            }
+        };
+
+        let mut image = Self::sampled(&dev.allocator, png_info.width, png_info.height, format);
         image.simple_copy_from(&staging, dev);
         image
     }

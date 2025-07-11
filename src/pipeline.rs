@@ -90,15 +90,15 @@ impl RenderPipeline for PipelinePresent {
             .build();
         let color_texture = RenderTexture::new(
             &frame.buffer.color_view,
-            &frame.cache.fallback.white_sampler,
+            &frame.dev.fallback.as_ref().unwrap().white_sampler,
         );
         let normal_texture = RenderTexture::new(
             &frame.buffer.normal_view,
-            &frame.cache.fallback.white_sampler,
+            &frame.dev.fallback.as_ref().unwrap().white_sampler,
         );
         let depth_texture = RenderTexture::new(
             &frame.buffer.depth_view,
-            &frame.cache.fallback.white_sampler,
+            &frame.dev.fallback.as_ref().unwrap().white_sampler,
         );
         self.bind_color_and_normal_and_depth(
             &frame.cache.command_buffer,
@@ -108,7 +108,10 @@ impl RenderPipeline for PipelinePresent {
             &normal_texture,
             &depth_texture,
         );
-        self.draw(&frame.cache, &frame.cache.fallback.present_primitive);
+        self.draw(
+            &frame.cache,
+            &frame.dev.fallback.as_ref().unwrap().present_primitive,
+        );
     }
 }
 
@@ -128,15 +131,15 @@ impl RenderPipeline for PipelineNormal {
             .build();
         let color_texture = RenderTexture::new(
             &frame.buffer.color_view,
-            &frame.cache.fallback.white_sampler,
+            &frame.dev.fallback.as_ref().unwrap().white_sampler,
         );
         let normal_texture = RenderTexture::new(
             &frame.buffer.normal_view,
-            &frame.cache.fallback.white_sampler,
+            &frame.dev.fallback.as_ref().unwrap().white_sampler,
         );
         let depth_texture = RenderTexture::new(
             &frame.buffer.depth_view,
-            &frame.cache.fallback.white_sampler,
+            &frame.dev.fallback.as_ref().unwrap().white_sampler,
         );
         self.bind_color_and_normal_and_depth(
             &frame.cache.command_buffer,
@@ -146,7 +149,10 @@ impl RenderPipeline for PipelineNormal {
             &normal_texture,
             &depth_texture,
         );
-        self.draw(&frame.cache, &frame.cache.fallback.present_primitive);
+        self.draw(
+            &frame.cache,
+            &frame.dev.fallback.as_ref().unwrap().present_primitive,
+        );
     }
 }
 
@@ -166,15 +172,15 @@ impl RenderPipeline for PipelineDepth {
             .build();
         let color_texture = RenderTexture::new(
             &frame.buffer.color_view,
-            &frame.cache.fallback.white_sampler,
+            &frame.dev.fallback.as_ref().unwrap().white_sampler,
         );
         let normal_texture = RenderTexture::new(
             &frame.buffer.normal_view,
-            &frame.cache.fallback.white_sampler,
+            &frame.dev.fallback.as_ref().unwrap().white_sampler,
         );
         let depth_texture = RenderTexture::new(
             &frame.buffer.depth_view,
-            &frame.cache.fallback.white_sampler,
+            &frame.dev.fallback.as_ref().unwrap().white_sampler,
         );
         self.bind_color_and_normal_and_depth(
             &frame.cache.command_buffer,
@@ -184,6 +190,9 @@ impl RenderPipeline for PipelineDepth {
             &normal_texture,
             &depth_texture,
         );
-        self.draw(&frame.cache, &frame.cache.fallback.present_primitive);
+        self.draw(
+            &frame.cache,
+            &frame.dev.fallback.as_ref().unwrap().present_primitive,
+        );
     }
 }
