@@ -11,5 +11,6 @@ SubpassInput depth;
 
 [shader("fragment")]
 float4 main() : SV_Target {
-    return normal.SubpassLoad();
+    float4 d = depth.SubpassLoad();
+    return float4(d.x, d.x, d.x, 1.0);
 }

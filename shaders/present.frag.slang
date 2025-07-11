@@ -6,6 +6,8 @@
 SubpassInput color;
 [vk::input_attachment_index(1)]
 SubpassInput normal;
+[vk::input_attachment_index(2)]
+SubpassInput depth;
 
 [shader("fragment")]
 float4 main() : SV_Target {

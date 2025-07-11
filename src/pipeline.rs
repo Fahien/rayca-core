@@ -19,6 +19,12 @@ pipewriter!(
     "shaders/normal.frag.slang"
 );
 
+pipewriter!(
+    Depth,
+    "shaders/present.vert.slang",
+    "shaders/depth.frag.slang"
+);
+
 pub trait Pipeline: Any {
     fn as_any(&self) -> &dyn Any;
     fn get_name(&self) -> &String;
@@ -91,12 +97,17 @@ impl RenderPipeline for PipelinePresent {
             &frame.buffer.normal_view,
             &frame.cache.fallback.white_sampler,
         );
-        self.bind_color_and_normal(
+        let depth_texture = RenderTexture::new(
+            &frame.buffer.depth_view,
+            &frame.cache.fallback.white_sampler,
+        );
+        self.bind_color_and_normal_and_depth(
             &frame.cache.command_buffer,
             &mut frame.cache.descriptors,
             key,
             &color_texture,
             &normal_texture,
+            &depth_texture,
         );
         self.draw(&frame.cache, &frame.cache.fallback.present_primitive);
     }
@@ -125,12 +136,56 @@ impl RenderPipeline for PipelineNormal {
             &frame.buffer.normal_view,
             &frame.cache.fallback.white_sampler,
         );
-        self.bind_color_and_normal(
+        let depth_texture = RenderTexture::new(
+            &frame.buffer.depth_view,
+            &frame.cache.fallback.white_sampler,
+        );
+        self.bind_color_and_normal_and_depth(
             &frame.cache.command_buffer,
             &mut frame.cache.descriptors,
             key,
             &color_texture,
             &normal_texture,
+            &depth_texture,
+        );
+        self.draw(&frame.cache, &frame.cache.fallback.present_primitive);
+    }
+}
+
+impl RenderPipeline for PipelineDepth {
+    fn render(
+        &self,
+        frame: &mut Frame,
+        _model: Option<&RenderModel>,
+        _camera_nodes: &[Handle<Node>],
+        _nodes: &[Handle<Node>],
+    ) {
+        self.bind(&frame.cache);
+
+        let color_view_handle = vk::Handle::as_raw(frame.buffer.color_view.view);
+        let key = DescriptorKey::builder()
+            .layout(self.get_layout())
+            .node(Handle::new(color_view_handle as _))
+            .build();
+        let color_texture = RenderTexture::new(
+            &frame.buffer.color_view,
+            &frame.cache.fallback.white_sampler,
+        );
+        let normal_texture = RenderTexture::new(
+            &frame.buffer.normal_view,
+            &frame.cache.fallback.white_sampler,
+        );
+        let depth_texture = RenderTexture::new(
+            &frame.buffer.depth_view,
+            &frame.cache.fallback.white_sampler,
+        );
+        self.bind_color_and_normal_and_depth(
+            &frame.cache.command_buffer,
+            &mut frame.cache.descriptors,
+            key,
+            &color_texture,
+            &normal_texture,
+            &depth_texture,
         );
         self.draw(&frame.cache, &frame.cache.fallback.present_primitive);
     }
