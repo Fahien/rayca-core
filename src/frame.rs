@@ -421,7 +421,6 @@ impl Frame {
                     None => &self.cache.fallback.white_material,
                 };
                 let pipeline = &pipelines[material.shader as usize];
-                // Rendering a node multiple times for each primitive?
                 pipeline.render(self, Some(model), cameras, &[node_handle]);
             }
         }
