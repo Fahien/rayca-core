@@ -42,7 +42,7 @@ impl Swapchain {
         let swapchain = {
             let mut create_info = vk::SwapchainCreateInfoKHR::default()
                 .surface(surface.surface)
-                .min_image_count(2)
+                .min_image_count(3)
                 .image_format(dev.surface_format.format)
                 .image_color_space(dev.surface_format.color_space)
                 .image_extent(extent)

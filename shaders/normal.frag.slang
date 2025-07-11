@@ -9,5 +9,5 @@ SubpassInput normal;
 
 [shader("fragment")]
 float4 main() : SV_Target {
-    return color.SubpassLoad();
+    return normal.SubpassLoad();
 }

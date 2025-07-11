@@ -25,11 +25,17 @@ pub trait VertexInput {
     }
 
     fn get_color_blend() -> Vec<vk::PipelineColorBlendAttachmentState> {
-        vec![
+        let mut ret = vec![
             vk::PipelineColorBlendAttachmentState::default()
-                .blend_enable(false)
-                .color_write_mask(vk::ColorComponentFlags::RGBA),
-        ]
+                .blend_enable(true)
+                .color_write_mask(vk::ColorComponentFlags::RGBA)
+                .src_color_blend_factor(vk::BlendFactor::ONE)
+                .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_ALPHA),
+        ];
+        if Self::get_subpass() == 0 {
+            ret.push(ret[0]);
+        }
+        ret
     }
 
     fn get_subpass() -> u32 {

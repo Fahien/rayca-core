@@ -90,8 +90,8 @@ impl Descriptors {
             let sampler_pool_size = vk::DescriptorPoolSize::default()
                 .descriptor_count(2 * 3) // Support 2 materials for 3 pipelines
                 .ty(vk::DescriptorType::COMBINED_IMAGE_SAMPLER);
-            // Support 3 input attachments
-            let input_count = 3;
+            // Support 4 input attachments
+            let input_count = 4;
             let input_pool_size = vk::DescriptorPoolSize::default()
                 .descriptor_count(input_count)
                 .ty(vk::DescriptorType::INPUT_ATTACHMENT);

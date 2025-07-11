@@ -22,6 +22,9 @@ pub struct Framebuffer {
     pub color_view: ImageView,
     pub color_image: RenderImage,
 
+    pub normal_view: ImageView,
+    pub normal_image: RenderImage,
+
     pub swapchain_view: vk::ImageView,
     pub extent: vk::Extent3D,
     device: Rc<ash::Device>,
@@ -77,9 +80,26 @@ impl Framebuffer {
 
         let depth_view = ImageView::new(&dev.device.device, &depth_image);
 
+        // Normal image
+        let normal_format = vk::Format::A2R10G10B10_UNORM_PACK32;
+        let mut normal_image = RenderImage::attachment(
+            &dev.allocator,
+            image.extent.width,
+            image.extent.height,
+            normal_format,
+        );
+        normal_image.transition(&dev, vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+
+        let normal_view = ImageView::new(&dev.device.device, &normal_image);
+
         // Framebuffers (image_views, renderpass)
         let framebuffer = {
-            let attachments = [swapchain_view, depth_view.view, color_view.view];
+            let attachments = [
+                swapchain_view,
+                depth_view.view,
+                color_view.view,
+                normal_view.view,
+            ];
 
             let create_info = vk::FramebufferCreateInfo::default()
                 .render_pass(pass.render)
@@ -98,6 +118,8 @@ impl Framebuffer {
             depth_image,
             color_view,
             color_image,
+            normal_view,
+            normal_image,
             swapchain_view,
             extent: image.extent,
             device: dev.device.device.clone(),
@@ -228,7 +250,15 @@ pub struct FrameCache {
     pub descriptors: Descriptors,
     pub command_buffer: CommandBuffer,
     pub fence: Fence,
+
+    /// The image ready semaphore is used by the acquire next image function and it will be signaled
+    /// then the image is ready to be rendered onto. Indeed it is also used by the submit draw
+    /// function which will wait for the image to be ready before submitting draw commands
     pub image_ready: Semaphore,
+
+    /// Image drawn sempahore is used when submitting draw commands to a back-buffer
+    /// and it will be signaled when rendering is finished. Indeed the present function
+    /// is waiting on this sempahore before presenting the back-buffer to screen.
     pub image_drawn: Semaphore,
 
     pub fallback: Fallback,

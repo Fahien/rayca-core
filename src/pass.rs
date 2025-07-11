@@ -45,9 +45,24 @@ impl Pass {
             .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
             .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
             .initial_layout(vk::ImageLayout::UNDEFINED)
-            .final_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+            .final_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
 
-        let attachments = [present_attachment, depth_attachment, color_attachment];
+        let normal_attachment = vk::AttachmentDescription::default()
+            .format(vk::Format::A2R10G10B10_UNORM_PACK32)
+            .samples(vk::SampleCountFlags::TYPE_1)
+            .load_op(vk::AttachmentLoadOp::CLEAR)
+            .store_op(vk::AttachmentStoreOp::DONT_CARE)
+            .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+            .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+            .initial_layout(vk::ImageLayout::UNDEFINED)
+            .final_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+
+        let attachments = [
+            present_attachment,
+            depth_attachment,
+            color_attachment,
+            normal_attachment,
+        ];
 
         let present_ref = vk::AttachmentReference::default()
             .attachment(0)
@@ -61,14 +76,22 @@ impl Pass {
             .attachment(2)
             .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
 
+        let normal_ref = vk::AttachmentReference::default()
+            .attachment(3)
+            .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+
         let present_refs = [present_ref];
-        let color_refs = [color_ref];
+        let color_refs = [color_ref, normal_ref];
 
         let color_input_ref = vk::AttachmentReference::default()
             .attachment(2)
             .layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 
-        let input_refs = [color_input_ref];
+        let normal_input_ref = ash::vk::AttachmentReference::default()
+            .attachment(3)
+            .layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+
+        let input_refs = [color_input_ref, normal_input_ref];
 
         // Two subpasses
         let subpasses = [
@@ -82,16 +105,20 @@ impl Pass {
                 .input_attachments(&input_refs),
         ];
 
+        // These dependencies follow the example from
+        // https://github.com/SaschaWillems/Vulkan/blob/master/examples/subpasses/subpasses.cpp
         let init_dependency = vk::SubpassDependency::default()
             .src_subpass(vk::SUBPASS_EXTERNAL)
             .dst_subpass(0)
-            .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
-            .src_access_mask(vk::AccessFlags::empty())
+            .src_stage_mask(vk::PipelineStageFlags::BOTTOM_OF_PIPE)
+            .src_access_mask(vk::AccessFlags::MEMORY_READ)
             .dst_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
-            .dst_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE)
+            .dst_access_mask(
+                vk::AccessFlags::COLOR_ATTACHMENT_READ | vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
+            )
             .dependency_flags(vk::DependencyFlags::BY_REGION);
 
-        let color_dependency = vk::SubpassDependency::default()
+        let output_to_input_dependency = vk::SubpassDependency::default()
             .src_subpass(0)
             .dst_subpass(1)
             .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
@@ -101,7 +128,7 @@ impl Pass {
             .dependency_flags(vk::DependencyFlags::BY_REGION);
 
         let present_dependency = vk::SubpassDependency::default()
-            .src_subpass(0)
+            .src_subpass(1)
             .dst_subpass(vk::SUBPASS_EXTERNAL)
             .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
             .src_access_mask(
@@ -111,7 +138,11 @@ impl Pass {
             .dst_access_mask(vk::AccessFlags::MEMORY_READ)
             .dependency_flags(vk::DependencyFlags::BY_REGION);
 
-        let dependencies = [init_dependency, color_dependency, present_dependency];
+        let dependencies = [
+            init_dependency,
+            output_to_input_dependency,
+            present_dependency,
+        ];
 
         // Build the render pass
         let create_info = vk::RenderPassCreateInfo::default()

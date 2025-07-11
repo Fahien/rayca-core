@@ -58,7 +58,10 @@ impl CommandBuffer {
         let mut color_clear = vk::ClearValue::default();
         color_clear.color.float32 = [0.0, 0.0, 0.0, 1.0];
 
-        let clear_values = [present_clear, depth_clear, color_clear];
+        let mut normal_clear = vk::ClearValue::default();
+        normal_clear.color.float32 = [0.0, 0.0, 0.0, 1.0];
+
+        let clear_values = [present_clear, depth_clear, color_clear, normal_clear];
         let create_info = vk::RenderPassBeginInfo::default()
             .framebuffer(framebuffer.framebuffer)
             .render_pass(pass.render)
