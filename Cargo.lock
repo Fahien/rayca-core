@@ -1198,7 +1198,7 @@ dependencies = [
 [[package]]
 name = "rayca-gltf"
 version = "0.1.0"
-source = "git+https://github.com/Fahien/rayca-gltf#2d20f22ff91032c951c37dfeebd7af6e82cad50a"
+source = "git+https://github.com/Fahien/rayca-gltf#197044d30c903135cdfec33726ab1b83d037c083"
 dependencies = [
  "rayca-geometry",
  "rayca-math",
@@ -1218,7 +1218,7 @@ dependencies = [
 [[package]]
 name = "rayca-pipe"
 version = "0.0.1"
-source = "git+https://github.com/Fahien/rayca-pipe#386ff37058da90af53c19003f439dc27d41e0000"
+source = "git+https://github.com/Fahien/rayca-pipe#785c2de954c4a68085a317b8afe5b5e3966bc0a8"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2151,9 +2151,9 @@ dependencies = [
 
 [[package]]
 name = "winnow"
-version = "0.7.11"
+version = "0.7.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74c7b26e3480b707944fc872477815d29a8e429d2f93a1ce000f5fa84a15cbcd"
+checksum = "f3edebf492c8125044983378ecb5766203ad3b4c2f7a922bd7dd207f6d443e95"
 dependencies = [
  "memchr",
 ]

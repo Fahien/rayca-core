@@ -348,7 +348,8 @@ impl Frame {
             }
 
             if let Some(mesh) = model.get_mesh(node.mesh) {
-                if let Some(primitive) = model.get_primitive(mesh.primitive) {
+                for primitive_handle in mesh.primitives.iter().copied() {
+                    let primitive = model.get_primitive(primitive_handle).unwrap();
                     if let Some(material) = model.get_material(primitive.material) {
                         let color_buffer = self
                             .cache
@@ -413,13 +414,15 @@ impl Frame {
     ) {
         let node = model.get_node(node_handle).unwrap();
         if let Some(mesh) = model.get_mesh(node.mesh) {
-            let primitive = model.get_primitive(mesh.primitive).unwrap();
-            let material = match model.get_material(primitive.material) {
-                Some(material) => material,
-                None => &self.cache.fallback.white_material,
-            };
-            let pipeline = &pipelines[material.shader as usize];
-            pipeline.render(self, Some(model), cameras, &[node_handle]);
+            for primitive_handle in mesh.primitives.iter().copied() {
+                let primitive = model.get_primitive(primitive_handle).unwrap();
+                let material = match model.get_material(primitive.material) {
+                    Some(material) => material,
+                    None => &self.cache.fallback.white_material,
+                };
+                let pipeline = &pipelines[material.shader as usize];
+                pipeline.render(self, Some(model), cameras, &[node_handle]);
+            }
         }
         for child in node.children.iter().cloned() {
             self.draw_node(cameras, child, model, pipelines);
