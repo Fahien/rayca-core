@@ -54,3 +54,28 @@ impl std::io::Read for Asset {
         self.data.as_slice().read(buf)
     }
 }
+
+pub struct Assets {
+    #[cfg(target_os = "android")]
+    pub android_app: winit::platform::android::activity::AndroidApp,
+}
+
+impl Assets {
+    #[cfg(target_os = "android")]
+    pub fn new(android_app: winit::platform::android::activity::AndroidApp) -> Self {
+        Self { android_app }
+    }
+
+    #[cfg(not(target_os = "android"))]
+    pub fn new() -> Self {
+        Self {}
+    }
+
+    pub fn load<P: AsRef<Path>>(&self, path: P) -> Asset {
+        Asset::load(
+            #[cfg(target_os = "android")]
+            &self.android_app,
+            path,
+        )
+    }
+}
