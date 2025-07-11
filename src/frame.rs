@@ -384,12 +384,25 @@ impl Frame {
             .begin_render_pass(pass, &self.buffer, size);
     }
 
-    pub fn set_viewport_and_scissor(&self, scale: f32) {
+    /// - `invert_viewport` according to https://www.saschawillems.de/blog/2019/03/29/flipping-the-vulkan-viewport/
+    pub fn set_viewport_and_scissor(&self, scale: f32, invert_viewport: bool) {
         let size = self.get_size();
 
+        let y = if invert_viewport {
+            size.height as f32 * scale
+        } else {
+            0.0
+        };
+        let height = if invert_viewport {
+            -(size.height as f32) * scale
+        } else {
+            size.height as f32 * scale
+        };
+
         let viewport = vk::Viewport::default()
+            .y(y)
             .width(size.width as f32 * scale)
-            .height(size.height as f32 * scale)
+            .height(height)
             .min_depth(1.0)
             .max_depth(0.0);
         self.cache.command_buffer.set_viewport(viewport);
