@@ -56,7 +56,7 @@ impl CommandBuffer {
         depth_clear.depth_stencil.stencil = 0;
 
         let mut color_clear = vk::ClearValue::default();
-        color_clear.color.float32 = [0.0, 0.0, 0.0, 1.0];
+        color_clear.color.float32 = [0.2, 0.0, 0.1, 1.0];
 
         let mut normal_clear = vk::ClearValue::default();
         normal_clear.color.float32 = [0.0, 0.0, 0.0, 1.0];

@@ -303,6 +303,9 @@ pub struct Frame {
     pub buffer: Framebuffer,
     pub cache: FrameCache,
 
+    /// Swapchain current transform
+    pub current_transform: vk::SurfaceTransformFlagsKHR,
+
     /// A frame should be able to allocate a uniform buffer on draw
     pub dev: Rc<Dev>,
 }
@@ -314,6 +317,7 @@ impl Frame {
         dev: &Rc<Dev>,
         image: &RenderImage,
         pass: &Pass,
+        current_transform: vk::SurfaceTransformFlagsKHR,
     ) -> Self {
         let buffer = Framebuffer::new(dev, image, pass);
         let cache = FrameCache::new(dev);
@@ -323,6 +327,7 @@ impl Frame {
             in_flight_count,
             buffer,
             cache,
+            current_transform,
             dev: dev.clone(),
         }
     }
@@ -537,7 +542,14 @@ impl SwapchainFrames {
         let mut frames = Vec::new();
         let in_flight_count = swapchain.images.len();
         for (id, image) in swapchain.images.iter().enumerate() {
-            let frame = Frame::new(id, in_flight_count, dev, image, pass);
+            let frame = Frame::new(
+                id,
+                in_flight_count,
+                dev,
+                image,
+                pass,
+                swapchain.current_transform,
+            );
             frames.push(Some(frame));
         }
 
