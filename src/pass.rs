@@ -128,7 +128,7 @@ impl Pass {
             .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
             .src_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE)
             .dst_stage_mask(vk::PipelineStageFlags::FRAGMENT_SHADER)
-            .dst_access_mask(vk::AccessFlags::SHADER_READ)
+            .dst_access_mask(vk::AccessFlags::INPUT_ATTACHMENT_READ)
             .dependency_flags(vk::DependencyFlags::BY_REGION);
 
         let present_dependency = vk::SubpassDependency::default()
