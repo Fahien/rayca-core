@@ -7,10 +7,10 @@ use crate::*;
 use winit::{
     application::ApplicationHandler,
     dpi::PhysicalSize,
-    event::{ElementState, KeyEvent, MouseButton, WindowEvent},
+    event::*,
     event_loop::ActiveEventLoop,
     keyboard::{KeyCode, PhysicalKey},
-    window::{Window, WindowId},
+    window::{Window, WindowId, WindowLevel},
 };
 
 pub struct WinBuilder {
@@ -207,13 +207,16 @@ impl ApplicationHandler for Win {
     }
 
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let attrs = Window::default_attributes()
-            .with_title(self.name.clone())
-            .with_inner_size(PhysicalSize::new(self.size.width, self.size.height));
-        let window = event_loop
-            .create_window(attrs)
-            .expect("Failed to create window");
-        self.window_id = Some(window.id());
-        self.window = Some(window);
+        if self.window.is_none() {
+            let attrs = Window::default_attributes()
+                .with_title(self.name.clone())
+                .with_window_level(WindowLevel::AlwaysOnTop)
+                .with_inner_size(PhysicalSize::new(self.size.width, self.size.height));
+            let window = event_loop
+                .create_window(attrs)
+                .expect("Failed to create window");
+            self.window_id = Some(window.id());
+            self.window = Some(window);
+        }
     }
 }
