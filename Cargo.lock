@@ -1739,7 +1739,7 @@ dependencies = [
 [[package]]
 name = "rayca-gltf"
 version = "0.1.0"
-source = "git+https://github.com/Fahien/rayca-gltf#74fe23eb3194373395c7fdd9640a425bfbf856f7"
+source = "git+https://github.com/Fahien/rayca-gltf#e28d1cc01ee238128283e904b328653ca5af6c94"
 dependencies = [
  "base64 0.22.1",
  "gltf",
@@ -1751,7 +1751,7 @@ dependencies = [
 [[package]]
 name = "rayca-math"
 version = "0.1.0"
-source = "git+https://github.com/Fahien/rayca-math#938162114e3ec30d957bc7385803c2705ccedba3"
+source = "git+https://github.com/Fahien/rayca-math#31982d8e844704a337ec8a4f6b18c6418fee2088"
 dependencies = [
  "num-traits",
  "rand 0.9.1",
@@ -1772,7 +1772,7 @@ dependencies = [
 [[package]]
 name = "rayca-util"
 version = "0.1.0"
-source = "git+https://github.com/Fahien/rayca-util#459d17ff1060d42ffcaacbc9fd5ce8c96a4c13dd"
+source = "git+https://github.com/Fahien/rayca-util#67e057c35676ca64c416465f172209830da7e315"
 dependencies = [
  "instant",
  "owo-colors",
