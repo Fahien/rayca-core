@@ -4,6 +4,7 @@
 
 use ash::vk;
 use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::*;
 
@@ -144,7 +145,7 @@ pub struct Dev {
     pub graphics_queue: Queue,
     /// Needs to be public if we want to create buffers outside this module.
     /// The allocator is shared between the various buffers to release resources on drop.
-    pub allocator: Rc<vk_mem::Allocator>,
+    pub allocator: Arc<vk_mem::Allocator>,
     pub device: Device,
 }
 
@@ -175,7 +176,7 @@ impl Dev {
         }
         println!("Surface format: {:?}", surface_format.format);
 
-        let allocator = Rc::new(
+        let allocator = Arc::new(
             {
                 let create_info =
                     vk_mem::AllocatorCreateInfo::new(&ctx.instance, &device, device.physical);
@@ -209,7 +210,7 @@ impl Drop for Dev {
     fn drop(&mut self) {
         self.wait();
         self.fallback.take();
-        assert_eq!(Rc::strong_count(&self.allocator), 1);
+        assert_eq!(Arc::strong_count(&self.allocator), 1);
         self.graphics_command_pool.destroy();
     }
 }

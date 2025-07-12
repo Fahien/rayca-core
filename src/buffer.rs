@@ -2,7 +2,7 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
-use std::rc::Rc;
+use std::sync::Arc;
 
 use ash::vk;
 use vk_mem::Alloc;
@@ -14,7 +14,7 @@ pub struct Buffer {
     pub buffer: vk::Buffer,
     usage: vk::BufferUsageFlags,
     pub size: vk::DeviceSize,
-    pub allocator: Rc<vk_mem::Allocator>,
+    pub allocator: Arc<vk_mem::Allocator>,
 }
 
 impl Buffer {
@@ -46,7 +46,7 @@ impl Buffer {
     }
 
     pub fn new_with_size(
-        allocator: &Rc<vk_mem::Allocator>,
+        allocator: &Arc<vk_mem::Allocator>,
         usage: vk::BufferUsageFlags,
         size: vk::DeviceSize,
     ) -> Self {
@@ -61,13 +61,13 @@ impl Buffer {
         }
     }
 
-    pub fn new<T>(allocator: &Rc<vk_mem::Allocator>, usage: vk::BufferUsageFlags) -> Self {
+    pub fn new<T>(allocator: &Arc<vk_mem::Allocator>, usage: vk::BufferUsageFlags) -> Self {
         let size = std::mem::size_of::<T>() as vk::DeviceSize;
         Self::new_with_size(allocator, usage, size)
     }
 
     pub fn from_data(
-        allocator: &Rc<vk_mem::Allocator>,
+        allocator: &Arc<vk_mem::Allocator>,
         data: &[u8],
         usage: vk::BufferUsageFlags,
     ) -> Self {
@@ -77,7 +77,7 @@ impl Buffer {
     }
 
     /// Loads data from a png image in `path` directly into a staging buffer
-    pub fn load(allocator: &Rc<vk_mem::Allocator>, image: ::image::RgbaImage) -> Self {
+    pub fn load(allocator: &Arc<vk_mem::Allocator>, image: ::image::RgbaImage) -> Self {
         let size = image.len();
         let usage = vk::BufferUsageFlags::TRANSFER_SRC;
 
