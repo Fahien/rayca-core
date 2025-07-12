@@ -2,9 +2,7 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
-use std::rc::Rc;
-
-use ash::vk;
+use std::sync::Arc;
 
 use super::*;
 
@@ -25,7 +23,7 @@ pub struct RenderPrimitive {
 }
 
 impl RenderPrimitive {
-    pub fn empty<T>(allocator: &Rc<vk_mem::Allocator>) -> Self {
+    pub fn empty<T>(allocator: &Arc<vk_mem::Allocator>) -> Self {
         Self {
             vertex_count: 0,
             vertices: Buffer::new::<T>(allocator, vk::BufferUsageFlags::VERTEX_BUFFER),
@@ -34,7 +32,7 @@ impl RenderPrimitive {
         }
     }
 
-    pub fn new<T>(allocator: &Rc<vk_mem::Allocator>, vv: &[T]) -> Self {
+    pub fn new<T>(allocator: &Arc<vk_mem::Allocator>, vv: &[T]) -> Self {
         let vertex_count = vv.len() as u32;
 
         let mut vertices = Buffer::new::<T>(allocator, vk::BufferUsageFlags::VERTEX_BUFFER);
@@ -68,7 +66,7 @@ impl RenderPrimitive {
     }
 
     /// Returns a new primitive quad with side length 1 centered at the origin
-    pub fn quad(allocator: &Rc<vk_mem::Allocator>, uv_scale: Vec2) -> Self {
+    pub fn quad(allocator: &Arc<vk_mem::Allocator>, uv_scale: Vec2) -> Self {
         let vertices = vec![
             Vertex::builder()
                 .position(Point3::new(-0.5, -0.5, 0.0))
@@ -94,7 +92,7 @@ impl RenderPrimitive {
         ret
     }
 
-    pub fn cube(allocator: &Rc<vk_mem::Allocator>) -> Self {
+    pub fn cube(allocator: &Arc<vk_mem::Allocator>) -> Self {
         let vertices = vec![
             // Front
             Vertex::builder()
@@ -262,7 +260,7 @@ impl RenderPrimitive {
         ret
     }
 
-    pub fn from_gltf(allocator: &Rc<vk_mem::Allocator>, gltf_primitive: &Primitive) -> Self {
+    pub fn from_gltf(allocator: &Arc<vk_mem::Allocator>, gltf_primitive: &Primitive) -> Self {
         // Convert vertices
         let mut ret = match gltf_primitive.mode {
             PrimitiveMode::Points => todo!(),

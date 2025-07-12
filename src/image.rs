@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 use std::rc::Rc;
+use std::sync::Arc;
 
 use super::*;
 
@@ -29,7 +30,7 @@ pub struct RenderImage {
     pub format: vk::Format,
     pub color_space: vk::ColorSpaceKHR,
     allocation: Option<vk_mem::Allocation>,
-    allocator: Option<Rc<vk_mem::Allocator>>,
+    allocator: Option<Arc<vk_mem::Allocator>>,
 }
 
 impl RenderImage {
@@ -75,7 +76,7 @@ impl RenderImage {
 
     /// Creates a new empty image
     pub fn new(
-        allocator: &Rc<vk_mem::Allocator>,
+        allocator: &Arc<vk_mem::Allocator>,
         width: u32,
         height: u32,
         format: vk::Format,
@@ -124,7 +125,7 @@ impl RenderImage {
 
     /// Create an image that can be used as an input or output attachment
     pub fn attachment(
-        allocator: &Rc<vk_mem::Allocator>,
+        allocator: &Arc<vk_mem::Allocator>,
         width: u32,
         height: u32,
         format: vk::Format,
@@ -139,7 +140,7 @@ impl RenderImage {
 
     /// Create an image that can be used to upload data from disk and sampled from a fragment shader
     pub fn sampled(
-        allocator: &Rc<vk_mem::Allocator>,
+        allocator: &Arc<vk_mem::Allocator>,
         width: u32,
         height: u32,
         format: vk::Format,

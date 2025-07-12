@@ -6,6 +6,7 @@ use ash::vk;
 use std::{
     collections::{HashMap, hash_map::Entry},
     rc::Rc,
+    sync::Arc,
 };
 
 use super::*;
@@ -144,14 +145,14 @@ where
     K: std::hash::Hash + Eq,
 {
     map: HashMap<K, Buffer>,
-    allocator: Rc<vk_mem::Allocator>,
+    allocator: Arc<vk_mem::Allocator>,
 }
 
 impl<K> BufferCache<K>
 where
     K: std::hash::Hash + Eq,
 {
-    fn new(allocator: &Rc<vk_mem::Allocator>) -> Self {
+    fn new(allocator: &Arc<vk_mem::Allocator>) -> Self {
         Self {
             map: Default::default(),
             allocator: allocator.clone(),
