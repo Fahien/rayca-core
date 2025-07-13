@@ -31,10 +31,16 @@ impl Ctx {
             api_version: vk::make_api_version(0, 1, 3, 0),
             ..Default::default()
         };
+
+        let enabled_validation_features = [vk::ValidationFeatureEnableEXT::DEBUG_PRINTF];
+        let mut validation_features = vk::ValidationFeaturesEXT::default()
+            .enabled_validation_features(&enabled_validation_features);
+
         let create_info = vk::InstanceCreateInfo::default()
             .application_info(&app_info)
             .enabled_extension_names(extensions_names)
-            .enabled_layer_names(&layer_names);
+            .enabled_layer_names(&layer_names)
+            .push_next(&mut validation_features);
 
         #[cfg(target_os = "macos")]
         let create_info = create_info.flags(vk::InstanceCreateFlags::ENUMERATE_PORTABILITY_KHR);
