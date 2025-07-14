@@ -27,7 +27,7 @@ pub trait VertexInput {
     fn get_color_blend() -> Vec<vk::PipelineColorBlendAttachmentState> {
         let mut ret = vec![
             vk::PipelineColorBlendAttachmentState::default()
-                .blend_enable(true)
+                .blend_enable(false)
                 .color_write_mask(vk::ColorComponentFlags::RGBA)
                 .src_color_blend_factor(vk::BlendFactor::ONE)
                 .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_ALPHA),
