@@ -5,7 +5,6 @@
 use ash::vk;
 use std::{
     collections::{HashMap, hash_map::Entry},
-    rc::Rc,
     sync::Arc,
 };
 
@@ -28,7 +27,7 @@ pub struct Framebuffer {
 
     pub swapchain_view: vk::ImageView,
     pub extent: vk::Extent3D,
-    device: Rc<ash::Device>,
+    device: Arc<ash::Device>,
 }
 
 impl Framebuffer {
@@ -262,7 +261,7 @@ pub struct FrameCache {
     /// is waiting on this sempahore before presenting the back-buffer to screen.
     pub image_drawn: Semaphore,
 
-    pub device: Rc<ash::Device>,
+    pub device: Arc<ash::Device>,
 }
 
 impl FrameCache {
@@ -307,14 +306,14 @@ pub struct Frame {
     pub current_transform: vk::SurfaceTransformFlagsKHR,
 
     /// A frame should be able to allocate a uniform buffer on draw
-    pub dev: Rc<Dev>,
+    pub dev: Arc<Dev>,
 }
 
 impl Frame {
     pub fn new(
         id: usize,
         in_flight_count: usize,
-        dev: &Rc<Dev>,
+        dev: &Arc<Dev>,
         image: &RenderImage,
         pass: &Pass,
         current_transform: vk::SurfaceTransformFlagsKHR,
@@ -532,11 +531,11 @@ impl Frames for _OffscreenFrames {
 pub struct SwapchainFrames {
     pub frames: Vec<Option<Frame>>,
     pub swapchain: Swapchain,
-    device: Rc<ash::Device>,
+    device: Arc<ash::Device>,
 }
 
 impl SwapchainFrames {
-    pub fn new(ctx: &Ctx, surface: &Surface, dev: &Rc<Dev>, size: Size2, pass: &Pass) -> Self {
+    pub fn new(ctx: &Ctx, surface: &Surface, dev: &Arc<Dev>, size: Size2, pass: &Pass) -> Self {
         let swapchain = Swapchain::new(ctx, surface, dev, size, None);
 
         let mut frames = Vec::new();

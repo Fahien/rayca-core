@@ -2,22 +2,20 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
-use std::{ffi::CString, path::Path, rc::Rc};
-
-use ash::vk;
+use std::{ffi::CString, path::Path, sync::Arc};
 
 use crate::*;
 
 pub struct ShaderModule {
     pub shader: vk::ShaderModule,
-    pub device: Rc<ash::Device>,
+    pub device: Arc<ash::Device>,
 }
 
 impl ShaderModule {
     #[cfg(target_os = "android")]
     pub fn create_shaders(
         android_app: &AndroidApp,
-        device: &Rc<ash::Device>,
+        device: &Arc<ash::Device>,
         vert_path: &str,
         frag_path: &str,
     ) -> (Self, Self) {
@@ -35,7 +33,7 @@ impl ShaderModule {
 
     #[cfg(not(target_os = "android"))]
     pub fn create_shaders(
-        device: &Rc<ash::Device>,
+        device: &Arc<ash::Device>,
         vert_path: &str,
         frag_path: &str,
     ) -> (Self, Self) {
@@ -48,23 +46,23 @@ impl ShaderModule {
         )
     }
 
-    pub fn new(device: &Rc<ash::Device>, shader_module: vk::ShaderModule) -> Self {
+    pub fn new(device: &Arc<ash::Device>, shader_module: vk::ShaderModule) -> Self {
         Self {
             shader: shader_module,
             device: device.clone(),
         }
     }
 
-    pub fn from_path<P: AsRef<Path>>(device: &Rc<ash::Device>, shader_path: P) -> Self {
+    pub fn from_path<P: AsRef<Path>>(device: &Arc<ash::Device>, shader_path: P) -> Self {
         let shader_data = std::fs::read(shader_path).expect("Failed to read shader file");
         Self::from_data(device, &shader_data)
     }
 
-    pub fn from_data(device: &Rc<ash::Device>, shader_data: &[u8]) -> Self {
+    pub fn from_data(device: &Arc<ash::Device>, shader_data: &[u8]) -> Self {
         Self::new(device, Self::build_shader_module(device, shader_data))
     }
 
-    fn build_shader_module(device: &Rc<ash::Device>, shader_data: &[u8]) -> vk::ShaderModule {
+    fn build_shader_module(device: &Arc<ash::Device>, shader_data: &[u8]) -> vk::ShaderModule {
         assert_eq!(shader_data.len() % 4, 0);
         let mut shader_bytecode = vec![0u32; shader_data.len() / size_of::<u32>()];
         unsafe {

@@ -2,17 +2,17 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
-use std::rc::Rc;
+use std::sync::Arc;
 
 use ash::vk;
 
 pub struct Semaphore {
     pub semaphore: vk::Semaphore,
-    device: Rc<ash::Device>,
+    device: Arc<ash::Device>,
 }
 
 impl Semaphore {
-    pub fn new(device: &Rc<ash::Device>) -> Self {
+    pub fn new(device: &Arc<ash::Device>) -> Self {
         let create_info = vk::SemaphoreCreateInfo::default();
         let semaphore = unsafe { device.create_semaphore(&create_info, None) }
             .expect("Failed to create Vulkan semaphore");
@@ -34,11 +34,11 @@ pub struct Fence {
     /// Ideally only Queue::submit should be allowed to modify this flag
     pub can_wait: bool,
     pub fence: vk::Fence,
-    device: Rc<ash::Device>,
+    device: Arc<ash::Device>,
 }
 
 impl Fence {
-    pub fn new(device: &Rc<ash::Device>, flags: vk::FenceCreateFlags) -> Self {
+    pub fn new(device: &Arc<ash::Device>, flags: vk::FenceCreateFlags) -> Self {
         let can_wait = flags.contains(vk::FenceCreateFlags::SIGNALED);
 
         let create_info = vk::FenceCreateInfo::default().flags(flags);
@@ -52,11 +52,11 @@ impl Fence {
         }
     }
 
-    pub fn unsignaled(device: &Rc<ash::Device>) -> Self {
+    pub fn unsignaled(device: &Arc<ash::Device>) -> Self {
         Self::new(device, vk::FenceCreateFlags::default())
     }
 
-    pub fn signaled(device: &Rc<ash::Device>) -> Self {
+    pub fn signaled(device: &Arc<ash::Device>) -> Self {
         Self::new(device, vk::FenceCreateFlags::SIGNALED)
     }
 

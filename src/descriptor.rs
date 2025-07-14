@@ -2,7 +2,8 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
-use std::{collections::HashMap, rc::Rc};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use ash::vk;
 
@@ -78,7 +79,7 @@ pub struct Descriptors {
     /// nodes with the model matrix
     sets: HashMap<DescriptorKey, Vec<vk::DescriptorSet>>,
     pool: vk::DescriptorPool,
-    device: Rc<ash::Device>,
+    device: Arc<ash::Device>,
 }
 
 impl Descriptors {

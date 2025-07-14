@@ -2,7 +2,7 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
-use std::{ffi::CStr, rc::Rc};
+use std::{ffi::CStr, sync::Arc};
 
 use ash::{khr, vk};
 
@@ -11,7 +11,7 @@ use crate::*;
 pub struct Device {
     pub graphics_queue_index: u32,
     pub physical: vk::PhysicalDevice,
-    pub device: Rc<ash::Device>,
+    pub device: Arc<ash::Device>,
 }
 
 impl Device {
@@ -97,14 +97,14 @@ impl Device {
         Self {
             graphics_queue_index,
             physical,
-            device: Rc::new(device),
+            device: Arc::new(device),
         }
     }
 }
 
 impl Drop for Device {
     fn drop(&mut self) {
-        assert_eq!(Rc::strong_count(&self.device), 1);
+        assert_eq!(Arc::strong_count(&self.device), 1);
         unsafe {
             self.device.destroy_device(None);
         }

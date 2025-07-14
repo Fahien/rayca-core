@@ -2,7 +2,7 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
-use std::rc::Rc;
+use std::sync::Arc;
 
 use ash::vk;
 
@@ -10,7 +10,7 @@ use crate::*;
 
 pub struct Pass {
     pub render: vk::RenderPass,
-    pub device: Rc<ash::Device>,
+    pub device: Arc<ash::Device>,
 }
 
 impl Pass {

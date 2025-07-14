@@ -2,7 +2,6 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
-use std::rc::Rc;
 use std::sync::Arc;
 
 use super::*;
@@ -330,11 +329,11 @@ impl Drop for RenderImage {
 
 pub struct ImageView {
     pub view: vk::ImageView,
-    device: Rc<ash::Device>,
+    device: Arc<ash::Device>,
 }
 
 impl ImageView {
-    pub fn new(device: &Rc<ash::Device>, image: &RenderImage) -> Self {
+    pub fn new(device: &Arc<ash::Device>, image: &RenderImage) -> Self {
         let device = device.clone();
 
         let aspect = RenderImage::get_aspect_from_format(image.format);

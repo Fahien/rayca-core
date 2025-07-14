@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: MIT
 
 use ash::vk;
-use std::rc::Rc;
 use std::sync::Arc;
 
 use crate::*;
@@ -14,7 +13,7 @@ pub struct Vkr {
     pub depth_pipeline: PipelineDepth,
     pub frames: SwapchainFrames,
     pub pass: Pass,
-    pub dev: Rc<Dev>,
+    pub dev: Arc<Dev>,
     pub surface: Surface,
     pub debug: Debug,
     pub assets: Assets,
@@ -41,7 +40,7 @@ impl Vkr {
         }
 
         let surface = Surface::new(&win, &ctx);
-        let dev = Rc::new(Dev::new(&ctx, Some(&surface)));
+        let dev = Arc::new(Dev::new(&ctx, Some(&surface)));
         let pass = Pass::new(&dev);
 
         let frames = SwapchainFrames::new(&ctx, &surface, &dev, win.size, &pass);

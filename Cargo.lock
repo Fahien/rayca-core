@@ -1730,7 +1730,7 @@ dependencies = [
 [[package]]
 name = "rayca-geometry"
 version = "0.1.0"
-source = "git+https://github.com/Fahien/rayca-geometry#2ca5d37ada15b6aa6d78bc35ff230ecbba7ca126"
+source = "git+https://github.com/Fahien/rayca-geometry#e18ea6a334d783e3df4078ea7cd8aa74a5afded0"
 dependencies = [
  "rayca-math",
  "rayca-util",
@@ -1739,7 +1739,7 @@ dependencies = [
 [[package]]
 name = "rayca-gltf"
 version = "0.1.0"
-source = "git+https://github.com/Fahien/rayca-gltf#344a95fe25ce3d3134c4cb8b3dbe28a64ad860c7"
+source = "git+https://github.com/Fahien/rayca-gltf#352a54087f86ff3c4dffb3dc711fb422c1c06d9b"
 dependencies = [
  "base64 0.22.1",
  "gltf",
@@ -1761,7 +1761,7 @@ dependencies = [
 [[package]]
 name = "rayca-pipe"
 version = "0.0.1"
-source = "git+https://github.com/Fahien/rayca-pipe#2764e7596ddda92ffcb4f0d2419bf2274bb94359"
+source = "git+https://github.com/Fahien/rayca-pipe#7a5ba827a7436624e1148bcd4cb73293214e648b"
 dependencies = [
  "proc-macro2",
  "quote",

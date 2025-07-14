@@ -2,14 +2,14 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
-use std::rc::Rc;
+use std::sync::Arc;
 
 use super::*;
 
 pub struct CommandBuffer {
     pub command_buffer: vk::CommandBuffer,
     pool: vk::CommandPool,
-    pub device: Rc<ash::Device>,
+    pub device: Arc<ash::Device>,
 }
 
 impl CommandBuffer {
@@ -242,7 +242,7 @@ impl Drop for CommandBuffer {
 
 pub struct CommandPool {
     pool: vk::CommandPool,
-    device: Rc<ash::Device>,
+    device: Arc<ash::Device>,
 }
 
 impl CommandPool {

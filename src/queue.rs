@@ -2,13 +2,13 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::*;
 
 pub struct Queue {
     pub queue: vk::Queue,
-    device: Rc<ash::Device>,
+    device: Arc<ash::Device>,
 }
 
 impl Queue {

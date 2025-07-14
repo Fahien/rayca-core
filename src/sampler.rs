@@ -2,17 +2,17 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT;
 
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::*;
 
 pub struct RenderSampler {
     pub sampler: vk::Sampler,
-    device: Rc<ash::Device>,
+    device: Arc<ash::Device>,
 }
 
 impl RenderSampler {
-    pub fn new(device: &Rc<ash::Device>) -> Self {
+    pub fn new(device: &Arc<ash::Device>) -> Self {
         let device = device.clone();
 
         let create_info = vk::SamplerCreateInfo::default()

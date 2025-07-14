@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 use ash::vk;
-use std::{mem::*, rc::Rc};
+use std::{mem::*, sync::Arc};
 
 use crate::*;
 
@@ -185,11 +185,11 @@ pub struct RenderModel {
     pub primitives: Pack<RenderPrimitive>,
 
     /// Useful for constructing the model continuously
-    dev: Rc<Dev>,
+    dev: Arc<Dev>,
 }
 
 impl RenderModel {
-    pub fn new(dev: &Rc<Dev>) -> Self {
+    pub fn new(dev: &Arc<Dev>) -> Self {
         Self {
             gltf: Default::default(),
             images: Pack::new(),
@@ -201,7 +201,7 @@ impl RenderModel {
         }
     }
 
-    pub fn new_with_gltf(dev: &Rc<Dev>, assets: &Assets, gltf: Model) -> Self {
+    pub fn new_with_gltf(dev: &Arc<Dev>, assets: &Assets, gltf: Model) -> Self {
         let mut ret = Self::new(dev);
 
         for image in gltf.images.iter() {
