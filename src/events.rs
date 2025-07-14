@@ -12,6 +12,7 @@ pub use winit::platform::android::activity::AndroidApp;
 
 use crate::*;
 
+
 #[derive(Default, PartialEq)]
 pub enum ButtonState {
     #[default]
@@ -78,6 +79,7 @@ pub struct Input {
     pub s: ButtonState,
     pub d: ButtonState,
     pub mouse: Mouse,
+    pub left_axis: Vec2,
 }
 
 impl Input {

@@ -176,7 +176,7 @@ impl ApplicationHandler for Win {
                     ElementState::Pressed => self.input.d = ButtonState::JustPressed,
                     ElementState::Released => self.input.d = ButtonState::JustReleased,
                 },
-                _ => (),
+                _ => println!("Unhandled key event: {:?}", physical_key),
             },
             WindowEvent::MouseInput {
                 state,
@@ -200,6 +200,10 @@ impl ApplicationHandler for Win {
                 self.input.mouse.position.x = position.x as f32;
                 self.input.mouse.position.y = position.y as f32;
             }
+            WindowEvent::Touch(Touch { location, .. }) => {
+                self.input.left_axis.x = location.x as f32;
+                self.input.left_axis.y = location.y as f32;
+            }
             WindowEvent::CloseRequested => {
                 self.window = None;
                 self.exit = true;
@@ -210,7 +214,7 @@ impl ApplicationHandler for Win {
                 self.size.width = physical_size.width;
                 self.size.height = physical_size.height;
             }
-            _ => (),
+            _ => println!("Unhandled window event: {:?}", event),
         }
     }
 
