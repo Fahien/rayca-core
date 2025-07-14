@@ -69,7 +69,7 @@ impl Framebuffer {
             vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
         );
 
-        let color_view = ImageView::new(&dev.device.device, &color_image);
+        let color_view = ImageView::new(&color_image);
 
         // Depth image
         let depth_format = vk::Format::D32_SFLOAT;
@@ -84,7 +84,7 @@ impl Framebuffer {
             vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
         );
 
-        let depth_view = ImageView::new(&dev.device.device, &depth_image);
+        let depth_view = ImageView::new(&depth_image);
 
         // Normal image
         let normal_format = vk::Format::A2R10G10B10_UNORM_PACK32;
@@ -99,7 +99,7 @@ impl Framebuffer {
             vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
         );
 
-        let normal_view = ImageView::new(&dev.device.device, &normal_image);
+        let normal_view = ImageView::new(&normal_image);
 
         // Framebuffers (image_views, renderpass)
         let framebuffer = {
@@ -184,59 +184,6 @@ where
 
     pub fn get_mut(&mut self, key: &K) -> Option<&mut Buffer> {
         self.map.get_mut(key)
-    }
-}
-
-/// Container of fallback resources for a frame such as
-/// A white 1x1 pixel texture (image, view, and sampler)
-pub struct Fallback {
-    _white_image: RenderImage,
-    _white_view: ImageView,
-    pub white_sampler: RenderSampler,
-    pub white_texture: RenderTexture,
-    pub white_buffer: Buffer,
-    pub white_material: Material,
-
-    /// A triangle that covers the whole screen
-    pub present_primitive: RenderPrimitive,
-}
-
-impl Fallback {
-    pub fn new(dev: &Dev) -> Self {
-        let white = [255, 255, 255, 255];
-        let white_image = RenderImage::from_data(
-            &dev.allocator,
-            &dev.graphics_queue,
-            &white,
-            1,
-            1,
-            vk::Format::R8G8B8A8_SRGB,
-        );
-        let white_view = ImageView::new(&dev.device.device, &white_image);
-        let white_sampler = RenderSampler::new(&dev.device.device);
-        let white_texture = RenderTexture::new(&white_view, &white_sampler);
-        let mut white_buffer =
-            Buffer::new::<Color>(&dev.allocator, vk::BufferUsageFlags::UNIFORM_BUFFER);
-        white_buffer.upload(&Color::WHITE);
-        let white_material = Material::default();
-
-        // Y pointing down
-        let present_vertices = vec![
-            PresentVertex::new(-1.0, -1.0),
-            PresentVertex::new(-1.0, 3.0),
-            PresentVertex::new(3.0, -1.0),
-        ];
-        let present_primitive = RenderPrimitive::new(&dev.allocator, &present_vertices);
-
-        Self {
-            _white_image: white_image,
-            _white_view: white_view,
-            white_sampler,
-            white_texture,
-            white_buffer,
-            white_material,
-            present_primitive,
-        }
     }
 }
 
@@ -452,7 +399,7 @@ impl Frame {
                 let primitive = model.get_primitive(primitive_handle).unwrap();
                 let material = match model.get_material(primitive.material) {
                     Some(material) => material,
-                    None => &self.dev.fallback.as_ref().unwrap().white_material,
+                    None => &self.dev.fallback.white_material,
                 };
                 let pipeline = &pipelines[material.shader as usize];
                 pipeline.render(self, Some(model), cameras, &[node_handle]);

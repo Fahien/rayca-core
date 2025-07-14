@@ -16,6 +16,8 @@ mod descriptor;
 pub use descriptor::*;
 mod events;
 pub use events::*;
+mod fallback;
+pub use fallback::*;
 mod frame;
 pub use frame::*;
 mod win;

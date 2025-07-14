@@ -244,7 +244,7 @@ impl RenderModel {
     }
 
     fn push_render_image(&mut self, image: RenderImage) {
-        let view = ImageView::new(&self.dev.device.device, &image);
+        let view = ImageView::new(&image);
         self.images.push(image);
         self.views.push(view);
     }
@@ -271,7 +271,7 @@ impl RenderModel {
         let view = self.views.get(texture.image.id.into()).unwrap();
         let sampler = match self.samplers.get(texture.sampler.id.into()) {
             Some(s) => s,
-            None => &self.dev.fallback.as_ref().unwrap().white_sampler,
+            None => &self.dev.fallback.white_sampler,
         };
         let texture = RenderTexture::new(&view, &sampler);
         self.textures.push(texture);

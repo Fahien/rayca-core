@@ -30,6 +30,7 @@ pub struct RenderImage {
     pub color_space: vk::ColorSpaceKHR,
     allocation: Option<vk_mem::Allocation>,
     allocator: Option<Arc<Allocator>>,
+    device: Arc<Device>,
 }
 
 impl RenderImage {
@@ -50,6 +51,7 @@ impl RenderImage {
     }
 
     pub fn unmanaged(
+        device: &Arc<Device>,
         image: vk::Image,
         size: Size2,
         format: vk::Format,
@@ -70,6 +72,7 @@ impl RenderImage {
             color_space,
             allocation: None,
             allocator: None,
+            device: device.clone(),
         }
     }
 
@@ -110,6 +113,8 @@ impl RenderImage {
         let (image, allocation) = unsafe { allocator.create_image(&image_info, &alloc_info) }
             .expect("Failed to create Vulkan image");
 
+        let device = allocator.device.clone();
+
         Self {
             managed: true,
             image,
@@ -119,6 +124,7 @@ impl RenderImage {
             color_space: vk::ColorSpaceKHR::default(),
             allocation: Some(allocation),
             allocator: Some(allocator),
+            device,
         }
     }
 
@@ -336,13 +342,11 @@ impl Drop for RenderImage {
 
 pub struct ImageView {
     pub view: vk::ImageView,
-    device: Arc<ash::Device>,
+    device: Arc<Device>,
 }
 
 impl ImageView {
-    pub fn new(device: &Arc<ash::Device>, image: &RenderImage) -> Self {
-        let device = device.clone();
-
+    pub fn new(image: &RenderImage) -> Self {
         let aspect = RenderImage::get_aspect_from_format(image.format);
 
         let create_info = vk::ImageViewCreateInfo::default()
@@ -358,10 +362,13 @@ impl ImageView {
                     .layer_count(1),
             );
 
-        let view = unsafe { device.create_image_view(&create_info, None) }
+        let view = unsafe { image.device.create_image_view(&create_info, None) }
             .expect("Failed to create Vulkan image view");
 
-        Self { view, device }
+        Self {
+            view,
+            device: image.device.clone(),
+        }
     }
 }
 

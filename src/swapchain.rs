@@ -73,6 +73,7 @@ impl Swapchain {
         let mut images = Vec::new();
         for image in swapchain_images.into_iter() {
             images.push(RenderImage::unmanaged(
+                &dev.device,
                 image,
                 size,
                 dev.surface_format.format,

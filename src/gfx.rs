@@ -137,8 +137,7 @@ impl Vkr {
 }
 
 pub struct Dev {
-    /// Using an option for dropping it by replacing it with None
-    pub fallback: Option<Fallback>,
+    pub fallback: Fallback,
     pub surface_format: vk::SurfaceFormatKHR,
     pub graphics_queue: GraphicsQueue,
     /// Needs to be public if we want to create buffers outside this module.
@@ -172,16 +171,15 @@ impl Dev {
         println!("Surface format: {:?}", surface_format.format);
 
         let allocator = Arc::new(Allocator::new(ctx, &device));
+        let fallback = Fallback::new(&allocator, &graphics_queue);
 
-        let mut ret = Self {
-            fallback: None,
+        Self {
+            fallback,
             surface_format,
             graphics_queue,
             allocator,
             device,
-        };
-        ret.fallback.replace(Fallback::new(&ret));
-        ret
+        }
     }
 
     pub fn wait(&self) {
@@ -196,8 +194,6 @@ impl Dev {
 impl Drop for Dev {
     fn drop(&mut self) {
         self.wait();
-        self.fallback.take();
-        assert_eq!(Arc::strong_count(&self.allocator), 1);
     }
 }
 
