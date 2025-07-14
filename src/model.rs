@@ -204,8 +204,16 @@ impl RenderModel {
     pub fn new_with_gltf(dev: &Arc<Dev>, assets: &Assets, gltf: Model) -> Self {
         let mut ret = Self::new(dev);
 
-        for image in gltf.images.iter() {
-            ret.push_render_image(image, assets);
+        // Load images concurrently
+        use rayon::iter::*;
+
+        let render_images: Vec<RenderImage> = gltf
+            .images
+            .par_iter()
+            .map(|image| RenderImage::load(dev, assets.load(&image.uri)))
+            .collect();
+        for image in render_images {
+            ret.push_render_image(image);
         }
         for sampler in gltf.samplers.iter() {
             ret.push_render_sampler(sampler);
@@ -233,16 +241,16 @@ impl RenderModel {
         self.gltf.scene.children.push(node)
     }
 
-    fn push_render_image(&mut self, image: &Image, assets: &Assets) {
-        let image_asset = assets.load(&image.uri);
-        let render_image = RenderImage::load(&self.dev, image_asset);
-        let view = ImageView::new(&self.dev.device.device, &render_image);
-        self.images.push(render_image);
+    fn push_render_image(&mut self, image: RenderImage) {
+        let view = ImageView::new(&self.dev.device.device, &image);
+        self.images.push(image);
         self.views.push(view);
     }
 
     pub fn push_image(&mut self, image: Image, assets: &Assets) -> Handle<Image> {
-        self.push_render_image(&image, assets);
+        let image_asset = assets.load(&image.uri);
+        let render_image = RenderImage::load(&self.dev, image_asset);
+        self.push_render_image(render_image);
         self.gltf.images.push(image)
     }
 

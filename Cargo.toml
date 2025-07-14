@@ -16,6 +16,7 @@ rayca-pipe = { git = "https://github.com/Fahien/rayca-pipe" }
 vk-mem = "0.4.*"
 png = "0.17.*"
 image = "0.25.6"
+rayon = "1.10.0"
 
 [target.'cfg(not(target_os="android"))'.dependencies]
 slang = { git = "https://github.com/Fahien/slang-rs" }

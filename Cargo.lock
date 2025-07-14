@@ -1722,6 +1722,7 @@ dependencies = [
  "rayca-geometry",
  "rayca-gltf",
  "rayca-pipe",
+ "rayon",
  "slang",
  "vk-mem",
  "winit",
