@@ -14,7 +14,7 @@ pub struct Buffer {
     pub buffer: vk::Buffer,
     usage: vk::BufferUsageFlags,
     pub size: vk::DeviceSize,
-    pub allocator: Arc<vk_mem::Allocator>,
+    pub allocator: Arc<Allocator>,
 }
 
 impl Buffer {
@@ -46,7 +46,7 @@ impl Buffer {
     }
 
     pub fn new_with_size(
-        allocator: &Arc<vk_mem::Allocator>,
+        allocator: &Arc<Allocator>,
         usage: vk::BufferUsageFlags,
         size: vk::DeviceSize,
     ) -> Self {
@@ -61,23 +61,19 @@ impl Buffer {
         }
     }
 
-    pub fn new<T>(allocator: &Arc<vk_mem::Allocator>, usage: vk::BufferUsageFlags) -> Self {
+    pub fn new<T>(allocator: &Arc<Allocator>, usage: vk::BufferUsageFlags) -> Self {
         let size = std::mem::size_of::<T>() as vk::DeviceSize;
         Self::new_with_size(allocator, usage, size)
     }
 
-    pub fn from_data(
-        allocator: &Arc<vk_mem::Allocator>,
-        data: &[u8],
-        usage: vk::BufferUsageFlags,
-    ) -> Self {
+    pub fn from_data(allocator: &Arc<Allocator>, data: &[u8], usage: vk::BufferUsageFlags) -> Self {
         let mut buffer = Self::new_with_size(allocator, usage, data.len() as vk::DeviceSize);
         buffer.upload_arr(data);
         buffer
     }
 
     /// Loads data from a png image in `path` directly into a staging buffer
-    pub fn load(allocator: &Arc<vk_mem::Allocator>, image: ::image::RgbaImage) -> Self {
+    pub fn load(allocator: &Arc<Allocator>, image: ::image::RgbaImage) -> Self {
         let size = image.len();
         let usage = vk::BufferUsageFlags::TRANSFER_SRC;
 

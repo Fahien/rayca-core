@@ -143,13 +143,13 @@ pub struct Dev {
     pub graphics_queue: GraphicsQueue,
     /// Needs to be public if we want to create buffers outside this module.
     /// The allocator is shared between the various buffers to release resources on drop.
-    pub allocator: Arc<vk_mem::Allocator>,
-    pub device: Device,
+    pub allocator: Arc<Allocator>,
+    pub device: Arc<Device>,
 }
 
 impl Dev {
     pub fn new(ctx: &Ctx, surface: Option<&Surface>) -> Self {
-        let device = Device::new(&ctx.instance, surface);
+        let device = Arc::new(Device::new(&ctx.instance, surface));
         let graphics_queue = GraphicsQueue::new(&device);
 
         // Surface format
@@ -171,14 +171,7 @@ impl Dev {
         }
         println!("Surface format: {:?}", surface_format.format);
 
-        let allocator = Arc::new(
-            {
-                let create_info =
-                    vk_mem::AllocatorCreateInfo::new(&ctx.instance, &device, device.physical);
-                unsafe { vk_mem::Allocator::new(create_info) }
-            }
-            .expect("Failed to create Vulkan allocator"),
-        );
+        let allocator = Arc::new(Allocator::new(ctx, &device));
 
         let mut ret = Self {
             fallback: None,
@@ -205,5 +198,39 @@ impl Drop for Dev {
         self.wait();
         self.fallback.take();
         assert_eq!(Arc::strong_count(&self.allocator), 1);
+    }
+}
+
+pub struct Allocator {
+    pub allocator: vk_mem::Allocator,
+    pub device: Arc<Device>,
+}
+
+impl Allocator {
+    pub fn new(ctx: &Ctx, device: &Arc<Device>) -> Self {
+        let allocator = {
+            let create_info =
+                vk_mem::AllocatorCreateInfo::new(&ctx.instance, &device, device.physical);
+            unsafe { vk_mem::Allocator::new(create_info) }
+        }
+        .expect("Failed to create Vulkan allocator");
+        Self {
+            allocator,
+            device: device.clone(),
+        }
+    }
+}
+
+impl std::ops::Deref for Allocator {
+    type Target = vk_mem::Allocator;
+
+    fn deref(&self) -> &Self::Target {
+        &self.allocator
+    }
+}
+
+impl std::ops::DerefMut for Allocator {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.allocator
     }
 }

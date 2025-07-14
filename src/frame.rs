@@ -153,14 +153,14 @@ where
     K: std::hash::Hash + Eq,
 {
     map: HashMap<K, Buffer>,
-    allocator: Arc<vk_mem::Allocator>,
+    allocator: Arc<Allocator>,
 }
 
 impl<K> BufferCache<K>
 where
     K: std::hash::Hash + Eq,
 {
-    fn new(allocator: &Arc<vk_mem::Allocator>) -> Self {
+    fn new(allocator: &Arc<Allocator>) -> Self {
         Self {
             map: Default::default(),
             allocator: allocator.clone(),

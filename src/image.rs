@@ -29,7 +29,7 @@ pub struct RenderImage {
     pub format: vk::Format,
     pub color_space: vk::ColorSpaceKHR,
     allocation: Option<vk_mem::Allocation>,
-    allocator: Option<Arc<vk_mem::Allocator>>,
+    allocator: Option<Arc<Allocator>>,
 }
 
 impl RenderImage {
@@ -75,7 +75,7 @@ impl RenderImage {
 
     /// Creates a new empty image
     pub fn new(
-        allocator: &Arc<vk_mem::Allocator>,
+        allocator: &Arc<Allocator>,
         width: u32,
         height: u32,
         format: vk::Format,
@@ -124,7 +124,7 @@ impl RenderImage {
 
     /// Create an image that can be used as an input or output attachment
     pub fn attachment(
-        allocator: &Arc<vk_mem::Allocator>,
+        allocator: &Arc<Allocator>,
         width: u32,
         height: u32,
         format: vk::Format,
@@ -139,7 +139,7 @@ impl RenderImage {
 
     /// Create an image that can be used to upload data from disk and sampled from a fragment shader
     pub fn sampled(
-        allocator: &Arc<vk_mem::Allocator>,
+        allocator: &Arc<Allocator>,
         width: u32,
         height: u32,
         format: vk::Format,
@@ -155,7 +155,7 @@ impl RenderImage {
 
     /// Creates a new image from raw data uploading it into a sampled image
     pub fn from_data(
-        allocator: &Arc<vk_mem::Allocator>,
+        allocator: &Arc<Allocator>,
         graphics_queue: &GraphicsQueue,
         data: &[u8],
         width: u32,
@@ -170,11 +170,7 @@ impl RenderImage {
     }
 
     /// Loads a PNG image from file and uploads it into a sampled image
-    pub fn load(
-        allocator: &Arc<vk_mem::Allocator>,
-        graphics_queue: &GraphicsQueue,
-        asset: Asset,
-    ) -> Self {
+    pub fn load(allocator: &Arc<Allocator>, graphics_queue: &GraphicsQueue, asset: Asset) -> Self {
         let image_reader = ::image::ImageReader::new(std::io::Cursor::new(asset.data))
             .with_guessed_format()
             .expect("Failed to guess image format")
