@@ -65,7 +65,7 @@ pub trait RenderPipeline: Pipeline {
         frame: &mut Frame,
         model: Option<&RenderModel>,
         camera_nodes: &[Handle<Node>],
-        nodes: &[Handle<Node>],
+        infos: &[DrawInfo],
     );
 }
 
@@ -80,7 +80,7 @@ impl RenderPipeline for PipelinePresent {
         frame: &mut Frame,
         _model: Option<&RenderModel>,
         _camera_nodes: &[Handle<Node>],
-        _nodes: &[Handle<Node>],
+        _infos: &[DrawInfo],
     ) {
         self.bind(&frame.cache);
 
@@ -113,7 +113,7 @@ impl RenderPipeline for PipelineNormal {
         frame: &mut Frame,
         _model: Option<&RenderModel>,
         _camera_nodes: &[Handle<Node>],
-        _nodes: &[Handle<Node>],
+        _infos: &[DrawInfo],
     ) {
         self.bind(&frame.cache);
 
@@ -146,7 +146,7 @@ impl RenderPipeline for PipelineDepth {
         frame: &mut Frame,
         _model: Option<&RenderModel>,
         _camera_nodes: &[Handle<Node>],
-        _nodes: &[Handle<Node>],
+        _infos: &[DrawInfo],
     ) {
         self.bind(&frame.cache);
 

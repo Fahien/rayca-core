@@ -255,6 +255,18 @@ impl FrameCache {
     }
 }
 
+#[derive(Default, Copy, Clone, Debug)]
+pub struct DrawInfo {
+    pub primitive: Handle<Primitive>,
+    pub node: Handle<Node>,
+}
+
+impl DrawInfo {
+    pub fn new(primitive: Handle<Primitive>, node: Handle<Node>) -> Self {
+        Self { primitive, node }
+    }
+}
+
 pub struct Frame {
     /// The number of this frame
     pub id: usize,
@@ -267,6 +279,9 @@ pub struct Frame {
 
     /// Swapchain current transform
     pub current_transform: vk::SurfaceTransformFlagsKHR,
+
+    /// Map of materials and their associated draw info
+    pub materials_drawinfos: HashMap<Handle<Material>, Vec<DrawInfo>>,
 
     /// A frame should be able to allocate a uniform buffer on draw
     pub dev: Arc<Dev>,
@@ -290,6 +305,7 @@ impl Frame {
             buffer,
             cache,
             current_transform,
+            materials_drawinfos: HashMap::new(),
             dev: dev.clone(),
         }
     }
@@ -313,6 +329,17 @@ impl Frame {
                 let proj_buffer = self.cache.proj_buffers.get_or_create::<Mat4>(node.camera);
                 proj_buffer.upload(&camera.projection);
             }
+
+            // Collect draw infos for this node
+            if let Some(mesh) = model.get_mesh(node.mesh) {
+                for primitive_handle in mesh.primitives.iter().copied() {
+                    let primitive = model.get_primitive(primitive_handle).unwrap();
+                    self.materials_drawinfos
+                        .entry(primitive.material)
+                        .or_default()
+                        .push(DrawInfo::new(primitive_handle, node_handle));
+                }
+            }
         }
 
         for child in node.children.iter().cloned() {
@@ -321,6 +348,7 @@ impl Frame {
     }
 
     fn update_nodes(&mut self, model: &RenderModel) {
+        self.materials_drawinfos.clear();
         let trs = model.get_scene().trs.clone();
         for node in model.get_scene().children.iter().cloned() {
             self.update_node(node, &trs, model);
@@ -391,30 +419,6 @@ impl Frame {
         self.cache.command_buffer.set_scissor(scissor);
     }
 
-    pub fn draw_node(
-        &mut self,
-        cameras: &[Handle<Node>],
-        node_handle: Handle<Node>,
-        model: &RenderModel,
-        pipelines: &[Box<dyn RenderPipeline>],
-    ) {
-        let node = model.get_node(node_handle).unwrap();
-        if let Some(mesh) = model.get_mesh(node.mesh) {
-            for primitive_handle in mesh.primitives.iter().copied() {
-                let primitive = model.get_primitive(primitive_handle).unwrap();
-                let material = match model.get_material(primitive.material) {
-                    Some(material) => material,
-                    None => &self.dev.fallback.white_material,
-                };
-                let pipeline = &pipelines[material.shader as usize];
-                pipeline.render(self, Some(model), cameras, &[node_handle]);
-            }
-        }
-        for child in node.children.iter().cloned() {
-            self.draw_node(cameras, child, model, pipelines);
-        }
-    }
-
     pub fn draw(&mut self, model: &RenderModel, pipelines: &[Box<dyn RenderPipeline>]) {
         // Collect camera handles
         let mut cameras = Vec::default();
@@ -425,8 +429,13 @@ impl Frame {
             }
         }
 
-        for node_handle in model.get_scene().children.iter().cloned() {
-            self.draw_node(&cameras, node_handle, model, pipelines);
+        for (material_handle, draw_info) in self.materials_drawinfos.clone() {
+            let material = match model.get_material(material_handle) {
+                Some(material) => material,
+                None => &self.dev.fallback.white_material,
+            };
+            let pipeline = &pipelines[material.shader as usize];
+            pipeline.render(self, Some(model), &cameras, &draw_info);
         }
     }
 
