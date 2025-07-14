@@ -74,7 +74,9 @@ impl Mouse {
 #[derive(Default)]
 pub struct Input {
     pub w: ButtonState,
+    pub a: ButtonState,
     pub s: ButtonState,
+    pub d: ButtonState,
     pub mouse: Mouse,
 }
 

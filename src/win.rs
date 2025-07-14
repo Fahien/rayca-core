@@ -164,9 +164,17 @@ impl ApplicationHandler for Win {
                     ElementState::Pressed => self.input.w = ButtonState::JustPressed,
                     ElementState::Released => self.input.w = ButtonState::JustReleased,
                 },
+                PhysicalKey::Code(KeyCode::KeyA) => match state {
+                    ElementState::Pressed => self.input.a = ButtonState::JustPressed,
+                    ElementState::Released => self.input.a = ButtonState::JustReleased,
+                },
                 PhysicalKey::Code(KeyCode::KeyS) => match state {
                     ElementState::Pressed => self.input.s = ButtonState::JustPressed,
                     ElementState::Released => self.input.s = ButtonState::JustReleased,
+                },
+                PhysicalKey::Code(KeyCode::KeyD) => match state {
+                    ElementState::Pressed => self.input.d = ButtonState::JustPressed,
+                    ElementState::Released => self.input.d = ButtonState::JustReleased,
                 },
                 _ => (),
             },
