@@ -140,8 +140,7 @@ pub struct Dev {
     /// Using an option for dropping it by replacing it with None
     pub fallback: Option<Fallback>,
     pub surface_format: vk::SurfaceFormatKHR,
-    pub graphics_command_pool: CommandPool,
-    pub graphics_queue: Queue,
+    pub graphics_queue: GraphicsQueue,
     /// Needs to be public if we want to create buffers outside this module.
     /// The allocator is shared between the various buffers to release resources on drop.
     pub allocator: Arc<vk_mem::Allocator>,
@@ -151,10 +150,7 @@ pub struct Dev {
 impl Dev {
     pub fn new(ctx: &Ctx, surface: Option<&Surface>) -> Self {
         let device = Device::new(&ctx.instance, surface);
-
-        let graphics_queue = Queue::new(&device);
-
-        let graphics_command_pool = CommandPool::new(&device);
+        let graphics_queue = GraphicsQueue::new(&device);
 
         // Surface format
         let mut surface_format = vk::SurfaceFormatKHR::default()
@@ -187,7 +183,6 @@ impl Dev {
         let mut ret = Self {
             fallback: None,
             surface_format,
-            graphics_command_pool,
             graphics_queue,
             allocator,
             device,
@@ -210,6 +205,5 @@ impl Drop for Dev {
         self.wait();
         self.fallback.take();
         assert_eq!(Arc::strong_count(&self.allocator), 1);
-        self.graphics_command_pool.destroy();
     }
 }

@@ -20,6 +20,10 @@ impl Queue {
         }
     }
 
+    pub fn get_handle(&self) -> vk::Queue {
+        self.queue
+    }
+
     pub fn submit(&self, submits: &[vk::SubmitInfo], fence: Option<&mut Fence>) {
         let fence = match fence {
             Some(fence) => {
@@ -78,5 +82,42 @@ impl Queue {
             Ok(true) => Err(vk::Result::ERROR_OUT_OF_DATE_KHR),
             Err(result) => Err(result),
         }
+    }
+
+    pub fn submit_and_wait(&self, command_buffer: &CommandBuffer) {
+        let command_buffers = [command_buffer.command_buffer];
+        let mut fence = Fence::unsignaled(&self.device);
+
+        let submits = [vk::SubmitInfo::default().command_buffers(&command_buffers)];
+
+        self.submit(&submits, Some(&mut fence));
+        fence.wait();
+    }
+}
+
+pub struct GraphicsQueue {
+    pub command_pool: CommandPool,
+    pub queue: Queue,
+}
+
+impl GraphicsQueue {
+    pub fn new(device: &Device) -> Self {
+        Self {
+            queue: Queue::new(device),
+            command_pool: CommandPool::new(device),
+        }
+    }
+}
+
+impl std::ops::Deref for GraphicsQueue {
+    type Target = Queue;
+    fn deref(&self) -> &Self::Target {
+        &self.queue
+    }
+}
+
+impl std::ops::DerefMut for GraphicsQueue {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.queue
     }
 }

@@ -64,7 +64,10 @@ impl Framebuffer {
             image.extent.height,
             image.format,
         );
-        color_image.transition(&dev, vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+        color_image.transition(
+            &dev.graphics_queue,
+            vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+        );
 
         let color_view = ImageView::new(&dev.device.device, &color_image);
 
@@ -76,7 +79,10 @@ impl Framebuffer {
             image.extent.height,
             depth_format,
         );
-        depth_image.transition(dev, vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+        depth_image.transition(
+            &dev.graphics_queue,
+            vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        );
 
         let depth_view = ImageView::new(&dev.device.device, &depth_image);
 
@@ -88,7 +94,10 @@ impl Framebuffer {
             image.extent.height,
             normal_format,
         );
-        normal_image.transition(&dev, vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+        normal_image.transition(
+            &dev.graphics_queue,
+            vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+        );
 
         let normal_view = ImageView::new(&dev.device.device, &normal_image);
 
@@ -195,7 +204,14 @@ pub struct Fallback {
 impl Fallback {
     pub fn new(dev: &Dev) -> Self {
         let white = [255, 255, 255, 255];
-        let white_image = RenderImage::from_data(&dev, &white, 1, 1, vk::Format::R8G8B8A8_SRGB);
+        let white_image = RenderImage::from_data(
+            &dev.allocator,
+            &dev.graphics_queue,
+            &white,
+            1,
+            1,
+            vk::Format::R8G8B8A8_SRGB,
+        );
         let white_view = ImageView::new(&dev.device.device, &white_image);
         let white_sampler = RenderSampler::new(&dev.device.device);
         let white_texture = RenderTexture::new(&white_view, &white_sampler);
@@ -267,7 +283,7 @@ pub struct FrameCache {
 impl FrameCache {
     pub fn new(dev: &Dev) -> Self {
         // Graphics command buffer (device, command pool)
-        let command_buffer = CommandBuffer::new(&dev.graphics_command_pool);
+        let command_buffer = CommandBuffer::new(&dev.graphics_queue.command_pool);
 
         Self {
             model_buffers: BufferCache::new(&dev.allocator),

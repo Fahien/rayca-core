@@ -210,7 +210,9 @@ impl RenderModel {
         let render_images: Vec<RenderImage> = gltf
             .images
             .par_iter()
-            .map(|image| RenderImage::load(dev, assets.load(&image.uri)))
+            .map(|image| {
+                RenderImage::load(&dev.allocator, &dev.graphics_queue, assets.load(&image.uri))
+            })
             .collect();
         for image in render_images {
             ret.push_render_image(image);
@@ -249,7 +251,8 @@ impl RenderModel {
 
     pub fn push_image(&mut self, image: Image, assets: &Assets) -> Handle<Image> {
         let image_asset = assets.load(&image.uri);
-        let render_image = RenderImage::load(&self.dev, image_asset);
+        let render_image =
+            RenderImage::load(&self.dev.allocator, &self.dev.graphics_queue, image_asset);
         self.push_render_image(render_image);
         self.gltf.images.push(image)
     }

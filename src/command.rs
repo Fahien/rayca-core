@@ -242,7 +242,7 @@ impl Drop for CommandBuffer {
 
 pub struct CommandPool {
     pool: vk::CommandPool,
-    device: Arc<ash::Device>,
+    pub device: Arc<ash::Device>,
 }
 
 impl CommandPool {

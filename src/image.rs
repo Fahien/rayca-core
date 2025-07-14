@@ -154,16 +154,27 @@ impl RenderImage {
     }
 
     /// Creates a new image from raw data uploading it into a sampled image
-    pub fn from_data(dev: &Dev, data: &[u8], width: u32, height: u32, format: vk::Format) -> Self {
-        let mut image = Self::sampled(&dev.allocator, width, height, format);
+    pub fn from_data(
+        allocator: &Arc<vk_mem::Allocator>,
+        graphics_queue: &GraphicsQueue,
+        data: &[u8],
+        width: u32,
+        height: u32,
+        format: vk::Format,
+    ) -> Self {
+        let mut image = Self::sampled(allocator, width, height, format);
         let usage = vk::BufferUsageFlags::TRANSFER_SRC;
-        let staging = Buffer::from_data(&dev.allocator, data, usage);
-        image.simple_copy_from(&staging, dev);
+        let staging = Buffer::from_data(allocator, data, usage);
+        image.simple_copy_from(&staging, graphics_queue);
         image
     }
 
     /// Loads a PNG image from file and uploads it into a sampled image
-    pub fn load(dev: &Dev, asset: Asset) -> Self {
+    pub fn load(
+        allocator: &Arc<vk_mem::Allocator>,
+        graphics_queue: &GraphicsQueue,
+        asset: Asset,
+    ) -> Self {
         let image_reader = ::image::ImageReader::new(std::io::Cursor::new(asset.data))
             .with_guessed_format()
             .expect("Failed to guess image format")
@@ -171,17 +182,17 @@ impl RenderImage {
             .expect("Failed to decode image");
         let rgba8_image = image_reader.into_rgba8();
         let dim = rgba8_image.dimensions();
-        let staging = Buffer::load(&dev.allocator, rgba8_image);
+        let staging = Buffer::load(allocator, rgba8_image);
 
         let format = vk::Format::R8G8B8A8_SRGB;
-        let mut image = Self::sampled(&dev.allocator, dim.0, dim.1, format);
-        image.simple_copy_from(&staging, dev);
+        let mut image = Self::sampled(allocator, dim.0, dim.1, format);
+        image.simple_copy_from(&staging, graphics_queue);
         image
     }
 
-    pub fn transition(&mut self, dev: &Dev, new_layout: vk::ImageLayout) {
+    pub fn transition(&mut self, graphics_queue: &GraphicsQueue, new_layout: vk::ImageLayout) {
         // @todo Use TRANSFER pool and transfer queue?
-        let command_buffer = CommandBuffer::new(&dev.graphics_command_pool);
+        let command_buffer = CommandBuffer::new(&graphics_queue.command_pool);
         command_buffer.begin(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
 
         // Old layout -> New layout
@@ -214,29 +225,29 @@ impl RenderImage {
 
         command_buffer.end();
 
-        let mut fence = Fence::unsignaled(&dev.device.device);
+        let mut fence = Fence::unsignaled(&graphics_queue.command_pool.device);
 
         let commands = [command_buffer.command_buffer];
         let submits = [vk::SubmitInfo::default().command_buffers(&commands)];
-        dev.graphics_queue.submit(&submits, Some(&mut fence));
+        graphics_queue.submit(&submits, Some(&mut fence));
 
         fence.wait();
     }
 
-    pub fn simple_copy_from(&mut self, staging: &Buffer, dev: &Dev) {
+    pub fn simple_copy_from(&mut self, staging: &Buffer, graphics_queue: &GraphicsQueue) {
         // @todo Use TRANSFER pool and transfer queue
-        let command_buffer = CommandBuffer::new(&dev.graphics_command_pool);
+        let command_buffer = CommandBuffer::new(&graphics_queue.command_pool);
         command_buffer.begin(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
 
         self.copy_from(staging, &command_buffer);
 
         command_buffer.end();
 
-        let mut fence = Fence::unsignaled(&dev.device.device);
+        let mut fence = Fence::unsignaled(&graphics_queue.command_pool.device);
 
         let commands = [command_buffer.command_buffer];
         let submits = [vk::SubmitInfo::default().command_buffers(&commands)];
-        dev.graphics_queue.submit(&submits, Some(&mut fence));
+        graphics_queue.submit(&submits, Some(&mut fence));
 
         fence.wait();
     }
