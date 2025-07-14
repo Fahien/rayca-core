@@ -313,30 +313,35 @@ impl Frame {
                 let proj_buffer = self.cache.proj_buffers.get_or_create::<Mat4>(node.camera);
                 proj_buffer.upload(&camera.projection);
             }
-
-            if let Some(mesh) = model.get_mesh(node.mesh) {
-                for primitive_handle in mesh.primitives.iter().copied() {
-                    let primitive = model.get_primitive(primitive_handle).unwrap();
-                    if let Some(material) = model.get_material(primitive.material) {
-                        let color_buffer = self
-                            .cache
-                            .material_buffers
-                            .get_or_create::<Color>(primitive.material);
-                        color_buffer.upload(&material.color);
-                    }
-                }
-            }
         }
+
         for child in node.children.iter().cloned() {
             self.update_node(child, &world_trs, model);
         }
     }
 
-    fn update(&mut self, model: &RenderModel) {
+    fn update_nodes(&mut self, model: &RenderModel) {
         let trs = model.get_scene().trs.clone();
         for node in model.get_scene().children.iter().cloned() {
             self.update_node(node, &trs, model);
         }
+    }
+
+    fn update_materials(&mut self, model: &RenderModel) {
+        for handle_index in 0..model.get_gltf().materials.len() {
+            let material_handle = handle_index.into();
+            let material = model.get_material(material_handle).unwrap();
+            let color_buffer = self
+                .cache
+                .material_buffers
+                .get_or_create::<Color>(material_handle);
+            color_buffer.upload(&material.color);
+        }
+    }
+
+    fn update(&mut self, model: &RenderModel) {
+        self.update_nodes(model);
+        self.update_materials(model);
     }
 
     /// Updates internal buffers and begins the command buffer
