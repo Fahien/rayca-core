@@ -38,6 +38,8 @@ mod queue;
 pub use queue::*;
 mod sampler;
 pub use sampler::*;
+mod scene;
+pub use scene::*;
 #[cfg(not(target_os = "android"))]
 mod slang;
 #[cfg(not(target_os = "android"))]

@@ -12,6 +12,7 @@ use crate::*;
 #[derive(Default)]
 pub struct DescriptorKeyBuilder {
     pub layout: vk::PipelineLayout,
+    pub model: Handle<RenderModel>,
     pub node: Handle<Node>,
     pub material: Handle<Material>,
     pub camera: Handle<Camera>,
@@ -20,6 +21,11 @@ pub struct DescriptorKeyBuilder {
 impl DescriptorKeyBuilder {
     pub fn layout(mut self, layout: vk::PipelineLayout) -> Self {
         self.layout = layout;
+        self
+    }
+
+    pub fn model(mut self, model: Handle<RenderModel>) -> Self {
+        self.model = model;
         self
     }
 
@@ -41,6 +47,7 @@ impl DescriptorKeyBuilder {
     pub fn build(self) -> DescriptorKey {
         DescriptorKey {
             layout: self.layout,
+            model: self.model,
             node: self.node,
             material: self.material,
             camera: self.camera,
@@ -48,15 +55,21 @@ impl DescriptorKeyBuilder {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default, Eq, Hash, PartialEq)]
+#[derive(Copy, Clone, Default, Eq, Hash, PartialEq)]
 pub struct DescriptorKey {
-    // Unique per pipeline
+    /// Unique per pipeline
     pub layout: vk::PipelineLayout,
-    // Unique per node, for model transforms
+
+    /// Unique per glTF model
+    pub model: Handle<RenderModel>,
+
+    /// Unique per node, for model transforms
     pub node: Handle<Node>,
-    // Unique per material, for material buffers
+
+    /// Unique per material, for material buffers
     pub material: Handle<Material>,
-    // Unique per camera, for view and projection matrices
+
+    /// Unique per camera, for view and projection matrices
     pub camera: Handle<Camera>,
 }
 

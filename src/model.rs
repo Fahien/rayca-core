@@ -201,6 +201,16 @@ impl RenderModel {
         }
     }
 
+    /// Returns a render model with a default camera positioned at the origin,
+    /// looking down the negative Z axis
+    pub fn default(dev: &Arc<Dev>) -> Self {
+        let mut ret = Self::new(dev);
+        let hcamera = ret.push_camera(Camera::default());
+        let hnode = ret.push_node(Node::builder().camera(hcamera).build());
+        ret.push_to_scene(hnode);
+        ret
+    }
+
     pub fn new_with_gltf(dev: &Arc<Dev>, assets: &Assets, gltf: Model) -> Self {
         let mut ret = Self::new(dev);
 
@@ -344,11 +354,11 @@ impl RenderModel {
         self.gltf.materials.get_mut(material)
     }
 
-    pub fn get_scene(&self) -> &Node {
+    pub fn get_root(&self) -> &Node {
         &self.gltf.scene
     }
 
-    pub fn get_scene_mut(&mut self) -> &mut Node {
+    pub fn get_root_mut(&mut self) -> &mut Node {
         &mut self.gltf.scene
     }
 
@@ -358,5 +368,16 @@ impl RenderModel {
 
     pub fn get_gltf_mut(&mut self) -> &mut Model {
         &mut self.gltf
+    }
+
+    pub fn get_first_node_with_camera(&self) -> Handle<Node> {
+        // For the moment, return the first camera in the first model
+        for hnode in self.gltf.nodes.get_handles() {
+            let node = self.gltf.nodes.get(hnode).unwrap();
+            if node.camera.is_valid() {
+                return hnode;
+            }
+        }
+        Handle::NONE
     }
 }

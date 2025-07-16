@@ -188,24 +188,49 @@ where
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ModelMatrixKey {
+    pub model: Handle<RenderModel>,
+    pub node: Handle<Node>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ViewMatrixKey {
+    pub model: Handle<RenderModel>,
+    pub node: Handle<Node>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ProjMatrixKey {
+    pub model: Handle<RenderModel>,
+    pub camera: Handle<Camera>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct NormalMatrixKey {
+    pub model: Handle<RenderModel>,
     pub node: Handle<Node>,
     pub view: Handle<Node>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MaterialKey {
+    pub model: Handle<RenderModel>,
+    pub material: Handle<Material>,
 }
 
 /// The frame cache contains resources that do not need to be recreated
 /// when the swapchain goes out of date
 pub struct FrameCache {
     /// Uniform buffers for model matrices associated to nodes
-    pub model_buffers: BufferCache<Handle<Node>>,
+    pub model_buffers: BufferCache<ModelMatrixKey>,
 
     /// Uniform buffers for camera matrices associated to nodes with cameras
-    pub view_buffers: BufferCache<Handle<Node>>,
+    pub view_buffers: BufferCache<ViewMatrixKey>,
 
     // Uniform buffers for proj matrices associated to cameras
-    pub proj_buffers: BufferCache<Handle<Camera>>,
+    pub proj_buffers: BufferCache<ProjMatrixKey>,
 
-    pub material_buffers: BufferCache<Handle<Material>>,
+    pub material_buffers: BufferCache<MaterialKey>,
 
     // Buffers for normal matrices associated to mesh nodes and camera nodes
     pub normal_buffers: BufferCache<NormalMatrixKey>,
@@ -255,15 +280,41 @@ impl FrameCache {
     }
 }
 
-#[derive(Default, Copy, Clone, Debug)]
+#[derive(Default, Clone, Copy)]
+pub struct CameraDrawInfo {
+    pub camera: Handle<Camera>,
+    pub node: Handle<Node>,
+    pub model: Handle<RenderModel>,
+}
+
+impl CameraDrawInfo {
+    pub fn new(camera: Handle<Camera>, node: Handle<Node>, model: Handle<RenderModel>) -> Self {
+        Self {
+            camera,
+            node,
+            model,
+        }
+    }
+}
+
+#[derive(Default, Copy, Clone)]
 pub struct DrawInfo {
     pub primitive: Handle<Primitive>,
     pub node: Handle<Node>,
+    pub model: Handle<RenderModel>,
 }
 
 impl DrawInfo {
-    pub fn new(primitive: Handle<Primitive>, node: Handle<Node>) -> Self {
-        Self { primitive, node }
+    pub fn new(
+        primitive: Handle<Primitive>,
+        node: Handle<Node>,
+        model: Handle<RenderModel>,
+    ) -> Self {
+        Self {
+            primitive,
+            node,
+            model,
+        }
     }
 }
 
@@ -280,8 +331,8 @@ pub struct Frame {
     /// Swapchain current transform
     pub current_transform: vk::SurfaceTransformFlagsKHR,
 
-    /// Map of materials and their associated draw info
-    pub materials_drawinfos: HashMap<Handle<Material>, Vec<DrawInfo>>,
+    /// Map of shaders and their associated draw info
+    pub shaders_drawinfos: HashMap<u32, Vec<DrawInfo>>,
 
     /// A frame should be able to allocate a uniform buffer on draw
     pub dev: Arc<Dev>,
@@ -305,7 +356,7 @@ impl Frame {
             buffer,
             cache,
             current_transform,
-            materials_drawinfos: HashMap::new(),
+            shaders_drawinfos: HashMap::new(),
             dev: dev.clone(),
         }
     }
@@ -314,19 +365,47 @@ impl Frame {
         Size2::new(self.buffer.extent.width, self.buffer.extent.height)
     }
 
-    fn update_node(&mut self, node_handle: Handle<Node>, trs: &Trs, model: &RenderModel) {
+    fn update_node(
+        &mut self,
+        node_handle: Handle<Node>,
+        trs: &Trs,
+        hmodel: Handle<RenderModel>,
+        scene: &RenderScene,
+    ) {
+        let model = scene.get_model(hmodel).unwrap();
         let node = model.get_node(node_handle).unwrap();
         let world_trs = trs * &node.trs;
 
         if node.mesh.is_valid() || node.camera.is_valid() {
-            let uniform_buffer = self.cache.model_buffers.get_or_create::<Mat4>(node_handle);
+            let model_matrix_key = ModelMatrixKey {
+                model: hmodel,
+                node: node_handle,
+            };
+            let uniform_buffer = self
+                .cache
+                .model_buffers
+                .get_or_create::<Mat4>(model_matrix_key);
             uniform_buffer.upload(&world_trs.to_mat4());
 
             if let Some(camera) = model.get_camera(node.camera) {
-                let view_buffer = self.cache.view_buffers.get_or_create::<Mat4>(node_handle);
+                let view_matrix_key = ViewMatrixKey {
+                    model: hmodel,
+                    node: node_handle,
+                };
+                let view_buffer = self
+                    .cache
+                    .view_buffers
+                    .get_or_create::<Mat4>(view_matrix_key);
                 view_buffer.upload(&world_trs.get_inversed().to_mat4());
 
-                let proj_buffer = self.cache.proj_buffers.get_or_create::<Mat4>(node.camera);
+                let proj_matrix_key = ProjMatrixKey {
+                    model: hmodel,
+                    camera: node.camera,
+                };
+                let proj_buffer = self
+                    .cache
+                    .proj_buffers
+                    .get_or_create::<Mat4>(proj_matrix_key);
                 proj_buffer.upload(&camera.projection);
             }
 
@@ -334,47 +413,56 @@ impl Frame {
             if let Some(mesh) = model.get_mesh(node.mesh) {
                 for primitive_handle in mesh.primitives.iter().copied() {
                     let primitive = model.get_primitive(primitive_handle).unwrap();
-                    self.materials_drawinfos
-                        .entry(primitive.material)
+                    let material = model.get_material(primitive.material).unwrap();
+                    self.shaders_drawinfos
+                        .entry(material.shader)
                         .or_default()
-                        .push(DrawInfo::new(primitive_handle, node_handle));
+                        .push(DrawInfo::new(primitive_handle, node_handle, hmodel));
                 }
             }
         }
 
         for child in node.children.iter().cloned() {
-            self.update_node(child, &world_trs, model);
+            self.update_node(child, &world_trs, hmodel, scene);
         }
     }
 
-    fn update_nodes(&mut self, model: &RenderModel) {
-        self.materials_drawinfos.clear();
-        let trs = model.get_scene().trs.clone();
-        for node in model.get_scene().children.iter().cloned() {
-            self.update_node(node, &trs, model);
+    fn update_nodes(&mut self, hmodel: Handle<RenderModel>, scene: &RenderScene) {
+        let model = scene.get_model(hmodel).unwrap();
+        let trs = model.get_root().trs.clone();
+        for node in model.get_root().children.iter().cloned() {
+            self.update_node(node, &trs, hmodel, scene);
         }
     }
 
-    fn update_materials(&mut self, model: &RenderModel) {
+    fn update_materials(&mut self, hmodel: Handle<RenderModel>, scene: &RenderScene) {
+        let model = scene.get_model(hmodel).unwrap();
         for handle_index in 0..model.get_gltf().materials.len() {
             let material_handle = handle_index.into();
             let material = model.get_material(material_handle).unwrap();
+            let material_key = MaterialKey {
+                model: hmodel,
+                material: material_handle,
+            };
             let color_buffer = self
                 .cache
                 .material_buffers
-                .get_or_create::<Color>(material_handle);
+                .get_or_create::<Color>(material_key);
             color_buffer.upload(&material.color);
         }
     }
 
-    fn update(&mut self, model: &RenderModel) {
-        self.update_nodes(model);
-        self.update_materials(model);
+    fn update(&mut self, scene: &RenderScene) {
+        self.shaders_drawinfos.clear();
+        for hmodel in scene.get_models().get_handles() {
+            self.update_nodes(hmodel, scene);
+            self.update_materials(hmodel, scene);
+        }
     }
 
     /// Updates internal buffers and begins the command buffer
-    pub fn begin(&mut self, model: &RenderModel) {
-        self.update(model);
+    pub fn begin(&mut self, scene: &RenderScene) {
+        self.update(scene);
 
         self.cache
             .command_buffer
@@ -419,32 +507,22 @@ impl Frame {
         self.cache.command_buffer.set_scissor(scissor);
     }
 
-    pub fn draw(&mut self, model: &RenderModel, pipelines: &[Box<dyn RenderPipeline>]) {
-        // Collect camera handles
-        let mut cameras = Vec::default();
-        for node_handle in model.get_scene().children.iter().cloned() {
-            let node = model.get_node(node_handle).unwrap();
-            if node.camera.is_valid() {
-                cameras.push(node_handle);
-            }
-        }
+    pub fn draw(&mut self, scene: &RenderScene, pipelines: &[Box<dyn RenderPipeline>]) {
+        // Focus on one camera for the moment
+        let camera_infos = vec![scene.get_default_camera_draw_info()];
 
-        for (material_handle, draw_info) in self.materials_drawinfos.clone() {
-            let material = match model.get_material(material_handle) {
-                Some(material) => material,
-                None => &self.dev.fallback.white_material,
-            };
-            let pipeline = &pipelines[material.shader as usize];
-            pipeline.render(self, Some(model), &cameras, &draw_info);
+        for (shader, draw_info) in self.shaders_drawinfos.clone() {
+            let pipeline = &pipelines[shader as usize];
+            pipeline.render(self, scene, &camera_infos, draw_info);
         }
     }
 
-    pub fn end_scene(&mut self, pipeline: &dyn RenderPipeline) {
+    pub fn end(&mut self, scene: &RenderScene, pipeline: &dyn RenderPipeline) {
         self.cache.command_buffer.next_subpass();
-        pipeline.render(self, None, &[], &[]);
+        pipeline.render(self, scene, &[], vec![]);
     }
 
-    fn end(&self) {
+    fn end_render_pass_and_command_buffer(&self) {
         self.cache.command_buffer.end_render_pass();
         self.cache.command_buffer.end();
     }
@@ -455,7 +533,7 @@ impl Frame {
         swapchain: &Swapchain,
         image_index: u32,
     ) -> Result<(), vk::Result> {
-        self.end();
+        self.end_render_pass_and_command_buffer();
 
         dev.graphics_queue.submit_draw(
             &self.cache.command_buffer,
