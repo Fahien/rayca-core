@@ -12,7 +12,6 @@ pub use winit::platform::android::activity::AndroidApp;
 
 use crate::*;
 
-
 #[derive(Default, PartialEq)]
 pub enum ButtonState {
     #[default]
@@ -72,14 +71,78 @@ impl Mouse {
     }
 }
 
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AndroidKeyCode {
+    Unknown = 0x0,
+    Back = 0x4,
+    A = 0x60,
+    B = 0x61,
+    X = 0x63,
+    Y = 0x64,
+    L1 = 0x00000066,
+    R1 = 0x00000067,
+    L2 = 0x00000068,
+    R2 = 0x00000069,
+    L3 = 0x6A,
+    R3 = 0x6B,
+    Play = 0x6C,
+    Stop = 0x6D,
+}
+
+impl From<u32> for AndroidKeyCode {
+    fn from(code: u32) -> Self {
+        match code {
+            0x4 => AndroidKeyCode::Back,
+            0x60 => AndroidKeyCode::A,
+            0x61 => AndroidKeyCode::B,
+            0x63 => AndroidKeyCode::X,
+            0x64 => AndroidKeyCode::Y,
+            0x00000066 => AndroidKeyCode::L1,
+            0x00000067 => AndroidKeyCode::R1,
+            0x00000068 => AndroidKeyCode::L2,
+            0x00000069 => AndroidKeyCode::R2,
+            0x6A => AndroidKeyCode::L3,
+            0x6B => AndroidKeyCode::R3,
+            0x6C => AndroidKeyCode::Play,
+            0x6D => AndroidKeyCode::Stop,
+            _ => {
+                eprintln!("Unknown Android key code: {}", code);
+                AndroidKeyCode::Unknown
+            }
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct AndroidInput {
+    pub left_axis: Vec2,
+    pub back: ButtonState,
+    pub a: ButtonState,
+    pub b: ButtonState,
+    pub x: ButtonState,
+    pub y: ButtonState,
+    pub l1: ButtonState,
+    pub r1: ButtonState,
+    pub l2: ButtonState,
+    pub r2: ButtonState,
+    pub l3: ButtonState,
+    pub r3: ButtonState,
+    pub play: ButtonState,
+    pub stop: ButtonState,
+}
+
 #[derive(Default)]
 pub struct Input {
+    pub q: ButtonState,
     pub w: ButtonState,
+    pub e: ButtonState,
     pub a: ButtonState,
     pub s: ButtonState,
     pub d: ButtonState,
     pub mouse: Mouse,
-    pub left_axis: Vec2,
+
+    pub android: AndroidInput,
 }
 
 impl Input {

@@ -9,7 +9,7 @@ use winit::{
     dpi::PhysicalSize,
     event::*,
     event_loop::ActiveEventLoop,
-    keyboard::{KeyCode, PhysicalKey},
+    keyboard::{KeyCode, NativeKeyCode, PhysicalKey},
     window::{Window, WindowId, WindowLevel},
 };
 
@@ -160,9 +160,17 @@ impl ApplicationHandler for Win {
                     },
                 ..
             } => match physical_key {
+                PhysicalKey::Code(KeyCode::KeyQ) => match state {
+                    ElementState::Pressed => self.input.q = ButtonState::JustPressed,
+                    ElementState::Released => self.input.q = ButtonState::JustReleased,
+                },
                 PhysicalKey::Code(KeyCode::KeyW) => match state {
                     ElementState::Pressed => self.input.w = ButtonState::JustPressed,
                     ElementState::Released => self.input.w = ButtonState::JustReleased,
+                },
+                PhysicalKey::Code(KeyCode::KeyE) => match state {
+                    ElementState::Pressed => self.input.e = ButtonState::JustPressed,
+                    ElementState::Released => self.input.e = ButtonState::JustReleased,
                 },
                 PhysicalKey::Code(KeyCode::KeyA) => match state {
                     ElementState::Pressed => self.input.a = ButtonState::JustPressed,
@@ -176,6 +184,28 @@ impl ApplicationHandler for Win {
                     ElementState::Pressed => self.input.d = ButtonState::JustPressed,
                     ElementState::Released => self.input.d = ButtonState::JustReleased,
                 },
+                PhysicalKey::Unidentified(NativeKeyCode::Android(code)) => {
+                    let button_state = match state {
+                        ElementState::Pressed => ButtonState::JustPressed,
+                        ElementState::Released => ButtonState::JustReleased,
+                    };
+                    match AndroidKeyCode::from(code) {
+                        AndroidKeyCode::Back => self.input.android.back = button_state,
+                        AndroidKeyCode::A => self.input.android.a = button_state,
+                        AndroidKeyCode::B => self.input.android.b = button_state,
+                        AndroidKeyCode::X => self.input.android.x = button_state,
+                        AndroidKeyCode::Y => self.input.android.y = button_state,
+                        AndroidKeyCode::L1 => self.input.android.l1 = button_state,
+                        AndroidKeyCode::R1 => self.input.android.r1 = button_state,
+                        AndroidKeyCode::L2 => self.input.android.l2 = button_state,
+                        AndroidKeyCode::R2 => self.input.android.r2 = button_state,
+                        AndroidKeyCode::L3 => self.input.android.l3 = button_state,
+                        AndroidKeyCode::R3 => self.input.android.r3 = button_state,
+                        AndroidKeyCode::Play => self.input.android.play = button_state,
+                        AndroidKeyCode::Stop => self.input.android.stop = button_state,
+                        _ => (),
+                    }
+                }
                 _ => println!("Unhandled key event: {:?}", physical_key),
             },
             WindowEvent::MouseInput {
@@ -201,8 +231,8 @@ impl ApplicationHandler for Win {
                 self.input.mouse.position.y = position.y as f32;
             }
             WindowEvent::Touch(Touch { location, .. }) => {
-                self.input.left_axis.x = location.x as f32;
-                self.input.left_axis.y = location.y as f32;
+                self.input.android.left_axis.x = location.x as f32;
+                self.input.android.left_axis.y = location.y as f32;
             }
             WindowEvent::CloseRequested => {
                 self.window = None;

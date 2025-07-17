@@ -206,7 +206,13 @@ impl RenderModel {
     pub fn default(dev: &Arc<Dev>) -> Self {
         let mut ret = Self::new(dev);
         let hcamera = ret.push_camera(Camera::default());
-        let hnode = ret.push_node(Node::builder().camera(hcamera).build());
+        let hnode = ret.push_node(
+            Node::builder()
+                .camera(hcamera)
+                // Slightly move the camera up
+                .trs(Trs::builder().translation(Vec3::new(0.0, 2.0, 0.0)).build())
+                .build(),
+        );
         ret.push_to_scene(hnode);
         ret
     }
