@@ -10,6 +10,7 @@ use crate::*;
 
 pub struct Device {
     pub graphics_queue_index: u32,
+    pub properties: vk::PhysicalDeviceProperties,
     pub physical: vk::PhysicalDevice,
     pub device: Arc<ash::Device>,
 }
@@ -94,8 +95,11 @@ impl Device {
         let device = unsafe { instance.create_device(physical, &device_create_info, None) }
             .expect("Failed to create Vulkan logical device");
 
+        let properties = unsafe { instance.get_physical_device_properties(physical) };
+
         Self {
             graphics_queue_index,
+            properties,
             physical,
             device: Arc::new(device),
         }

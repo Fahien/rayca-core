@@ -5,8 +5,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use ash::vk;
-
 use crate::*;
 
 #[derive(Default)]
@@ -97,27 +95,35 @@ pub struct Descriptors {
 
 impl Descriptors {
     pub fn new(device: &Device) -> Self {
-        let pool = unsafe {
-            let uniform_pool_size = vk::DescriptorPoolSize::default()
-                .descriptor_count(8 * 3) // Support 8 uniforms for 3 pipelines
-                .ty(vk::DescriptorType::UNIFORM_BUFFER);
-            let sampler_pool_size = vk::DescriptorPoolSize::default()
-                .descriptor_count(8 * 3) // Support 8 materials for 3 pipelines
-                .ty(vk::DescriptorType::COMBINED_IMAGE_SAMPLER);
-            // Support 4 input attachments
-            let input_count = 4;
-            let input_pool_size = vk::DescriptorPoolSize::default()
-                .descriptor_count(input_count)
-                .ty(vk::DescriptorType::INPUT_ATTACHMENT);
+        let uniform_pool_size = vk::DescriptorPoolSize::default()
+            .descriptor_count(device.properties.limits.max_descriptor_set_uniform_buffers) // Support 8 uniforms for 3 pipelines
+            .ty(vk::DescriptorType::UNIFORM_BUFFER);
+        let sampler_pool_size = vk::DescriptorPoolSize::default()
+            .descriptor_count(device.properties.limits.max_descriptor_set_sampled_images) // Support 8 materials for 3 pipelines
+            .ty(vk::DescriptorType::COMBINED_IMAGE_SAMPLER);
+        let input_pool_size = vk::DescriptorPoolSize::default()
+            .descriptor_count(
+                device
+                    .properties
+                    .limits
+                    .max_descriptor_set_input_attachments,
+            )
+            .ty(vk::DescriptorType::INPUT_ATTACHMENT);
 
-            let pool_sizes = vec![uniform_pool_size, sampler_pool_size, input_pool_size];
-            let create_info = vk::DescriptorPoolCreateInfo::default()
-                .pool_sizes(&pool_sizes)
-                // Support 3 frames with 3 pipelines with 8 descriptor sets
-                .max_sets(8 * 3 * 3);
-            device.create_descriptor_pool(&create_info, None)
-        }
-        .expect("Failed to create Vulkan descriptor pool");
+        let pool_sizes = vec![uniform_pool_size, sampler_pool_size, input_pool_size];
+        let max_sets = device.properties.limits.max_descriptor_set_uniform_buffers
+            + device.properties.limits.max_descriptor_set_sampled_images
+            + device
+                .properties
+                .limits
+                .max_descriptor_set_input_attachments;
+
+        let create_info = vk::DescriptorPoolCreateInfo::default()
+            .pool_sizes(&pool_sizes)
+            .max_sets(max_sets);
+
+        let pool = unsafe { device.create_descriptor_pool(&create_info, None) }
+            .expect("Failed to create Vulkan descriptor pool");
 
         Self {
             sets: HashMap::new(),
