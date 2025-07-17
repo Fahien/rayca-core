@@ -413,7 +413,10 @@ impl Frame {
             if let Some(mesh) = model.get_mesh(node.mesh) {
                 for primitive_handle in mesh.primitives.iter().copied() {
                     let primitive = model.get_primitive(primitive_handle).unwrap();
-                    let material = model.get_material(primitive.material).unwrap();
+                    let material = model
+                        .get_material(primitive.material)
+                        .unwrap_or(&self.dev.fallback.white_material);
+
                     self.shaders_drawinfos
                         .entry(material.shader)
                         .or_default()
