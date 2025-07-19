@@ -2,6 +2,8 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
+use std::path::PathBuf;
+
 use crate::*;
 
 use winit::{
@@ -10,12 +12,14 @@ use winit::{
     event::*,
     event_loop::ActiveEventLoop,
     keyboard::{KeyCode, NativeKeyCode, PhysicalKey},
-    window::{Window, WindowId, WindowLevel},
+    window::{Icon, Window, WindowId, WindowLevel},
 };
 
 pub struct WinBuilder {
     title: String,
     size: Size2,
+    #[cfg(not(target_os = "android"))]
+    icon_path: PathBuf,
     #[cfg(target_os = "android")]
     app: Option<AndroidApp>,
 }
@@ -25,6 +29,8 @@ impl Default for WinBuilder {
         Self {
             title: "Rayca".into(),
             size: Size2::new(480, 480),
+            #[cfg(not(target_os = "android"))]
+            icon_path: PathBuf::from("images/rayca.jpg"),
             #[cfg(target_os = "android")]
             app: None,
         }
@@ -42,6 +48,12 @@ impl WinBuilder {
         self
     }
 
+    #[cfg(not(target_os = "android"))]
+    pub fn icon_path<P: Into<PathBuf>>(mut self, path: P) -> Self {
+        self.icon_path = path.into();
+        self
+    }
+
     #[cfg(target_os = "android")]
     pub fn android_app(mut self, android_app: AndroidApp) -> Self {
         // This is a placeholder for Android-specific initialization
@@ -52,7 +64,7 @@ impl WinBuilder {
 
     #[cfg(not(target_os = "android"))]
     pub fn build(self) -> Win {
-        Win::new(self.title, self.size)
+        Win::new(self.title, self.size, self.icon_path)
     }
 
     #[cfg(target_os = "android")]
@@ -72,6 +84,9 @@ pub struct Win {
     pub android_app: AndroidApp,
 
     pub size: Size2,
+
+    #[cfg(not(target_os = "android"))]
+    icon_path: PathBuf,
 
     window_id: Option<WindowId>,
     pub window: Option<Window>,
@@ -94,10 +109,11 @@ impl Win {
     }
 
     #[cfg(not(target_os = "android"))]
-    pub fn new<S: Into<String>>(name: S, size: Size2) -> Self {
+    pub fn new<S: Into<String>>(name: S, size: Size2, icon_path: PathBuf) -> Self {
         Self {
             name: name.into(),
             size,
+            icon_path,
             window_id: None,
             window: None,
             resized: false,
@@ -250,10 +266,25 @@ impl ApplicationHandler for Win {
 
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.window.is_none() {
-            let attrs = Window::default_attributes()
+            let mut attrs = Window::default_attributes()
                 .with_title(self.name.clone())
                 .with_window_level(WindowLevel::AlwaysOnTop)
                 .with_inner_size(PhysicalSize::new(self.size.width, self.size.height));
+
+            #[cfg(not(target_os = "android"))]
+            if let Ok(icon_file) = std::fs::File::open(&self.icon_path) {
+                let reader = std::io::BufReader::new(icon_file);
+                let rgba = ::image::ImageReader::new(reader)
+                    .with_guessed_format()
+                    .expect("msg: Failed to guess image format")
+                    .decode()
+                    .expect("Failed to decode icon image");
+                let rgba_data = rgba.to_rgba8().into_vec();
+                if let Ok(icon) = Icon::from_rgba(rgba_data, rgba.width(), rgba.height()) {
+                    attrs = attrs.with_window_icon(Some(icon));
+                }
+            }
+
             let window = event_loop
                 .create_window(attrs)
                 .expect("Failed to create window");
