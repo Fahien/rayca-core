@@ -273,7 +273,9 @@ impl RenderPrimitive {
                     .collect();
                 Self::new(allocator, &vertices)
             }
-            PrimitiveMode::Triangles | PrimitiveMode::TriangleStrip => Self::new(allocator, &gltf_primitive.vertices),
+            PrimitiveMode::Triangles | PrimitiveMode::TriangleStrip => {
+                Self::new(allocator, &gltf_primitive.vertices)
+            }
             PrimitiveMode::TriangleFan => todo!(),
         };
 

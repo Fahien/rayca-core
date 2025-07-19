@@ -178,6 +178,8 @@ impl VertexInput for PresentVertex {
 /// Model representation useful for the renderer
 pub struct RenderModel {
     gltf: Model,
+    pub buffers: Pack<RenderBuffer>,
+    pub buffer_views: Pack<RenderBufferView>,
     pub images: Pack<RenderImage>,
     pub views: Pack<ImageView>,
     pub samplers: Pack<RenderSampler>,
@@ -192,6 +194,8 @@ impl RenderModel {
     pub fn new(dev: &Arc<Dev>) -> Self {
         Self {
             gltf: Default::default(),
+            buffers: Pack::new(),
+            buffer_views: Pack::new(),
             images: Pack::new(),
             views: Pack::new(),
             samplers: Pack::new(),
@@ -219,6 +223,14 @@ impl RenderModel {
 
     pub fn new_with_gltf(dev: &Arc<Dev>, assets: &Assets, gltf: Model) -> Self {
         let mut ret = Self::new(dev);
+
+        // Load buffers
+        for buffer in gltf.buffers.iter() {
+            ret.push_render_buffer(buffer);
+        }
+        for buffer_view in gltf.buffer_views.iter() {
+            ret.push_render_buffer_views(buffer_view);
+        }
 
         // Load images concurrently
         use rayon::iter::*;
@@ -257,6 +269,27 @@ impl RenderModel {
 
     pub fn push_to_scene(&mut self, node: Handle<Node>) {
         self.gltf.scene.children.push(node)
+    }
+
+    fn push_render_buffer(&mut self, buffer: &Buffer) {
+        let render_buffer = RenderBuffer::from_data(
+            &self.dev.allocator,
+            &buffer.data,
+            vk::BufferUsageFlags::VERTEX_BUFFER | vk::BufferUsageFlags::INDEX_BUFFER,
+        );
+        self.buffers.push(render_buffer);
+    }
+
+    fn push_render_buffer_views(&mut self, buffer_view: &BufferView) {
+        let buffer = self.buffers.get(buffer_view.buffer.id.into()).unwrap();
+        let render_buffer_view = RenderBufferView::new(
+            &self.dev.device,
+            buffer,
+            buffer_view.offset as vk::DeviceSize,
+            buffer_view.size as vk::DeviceSize,
+            buffer_view.stride as vk::DeviceSize,
+        );
+        self.buffer_views.push(render_buffer_view);
     }
 
     fn push_render_image(&mut self, image: RenderImage) {

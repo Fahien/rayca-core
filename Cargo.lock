@@ -1739,7 +1739,7 @@ dependencies = [
 [[package]]
 name = "rayca-gltf"
 version = "0.1.0"
-source = "git+https://github.com/fahien/rayca-gltf.git#a433a82e75c9e8812201c74e687802225d601149"
+source = "git+https://github.com/fahien/rayca-gltf.git#0108a6e6ce41896118436761d0371f7a0771b8ff"
 dependencies = [
  "base64 0.22.1",
  "gltf",
@@ -1751,7 +1751,7 @@ dependencies = [
 [[package]]
 name = "rayca-math"
 version = "0.1.0"
-source = "git+https://github.com/fahien/rayca-math.git#c91547d732e0e2c8fd1f86d070c44adc700dbda9"
+source = "git+https://github.com/fahien/rayca-math.git#dfe4880c271da089d2298555328a69169208bb2f"
 dependencies = [
  "num-traits",
  "rand 0.9.1",
