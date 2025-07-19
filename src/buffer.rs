@@ -139,3 +139,40 @@ impl Drop for RenderBuffer {
         };
     }
 }
+
+#[derive(Clone)]
+pub struct RenderBufferView {
+    pub handle: vk::BufferView,
+    pub stride: vk::DeviceSize,
+    device: Arc<Device>,
+}
+
+impl RenderBufferView {
+    pub fn new(
+        device: &Arc<Device>,
+        buffer: &RenderBuffer,
+        offset: vk::DeviceSize,
+        range: vk::DeviceSize,
+        stride: vk::DeviceSize,
+    ) -> Self {
+        let create_info = vk::BufferViewCreateInfo::default()
+            .buffer(buffer.buffer)
+            .offset(offset)
+            .range(range);
+        let handle = unsafe { device.create_buffer_view(&create_info, None) }
+            .expect("Failed to create Vulkan buffer view");
+        Self {
+            handle,
+            stride,
+            device: device.clone(),
+        }
+    }
+}
+
+impl Drop for RenderBufferView {
+    fn drop(&mut self) {
+        unsafe {
+            self.device.destroy_buffer_view(self.handle, None);
+        }
+    }
+}
