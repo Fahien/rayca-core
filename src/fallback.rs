@@ -13,7 +13,7 @@ pub struct Fallback {
     _white_view: ImageView,
     pub white_sampler: RenderSampler,
     pub white_texture: RenderTexture,
-    pub white_buffer: Buffer,
+    pub white_buffer: RenderBuffer,
     pub white_material: Material,
 
     /// A triangle that covers the whole screen
@@ -35,7 +35,7 @@ impl Fallback {
         let white_sampler = RenderSampler::new(&allocator.device.device);
         let white_texture = RenderTexture::new(&white_view, &white_sampler);
         let mut white_buffer =
-            Buffer::new::<Color>(allocator, vk::BufferUsageFlags::UNIFORM_BUFFER);
+            RenderBuffer::new::<Color>(allocator, vk::BufferUsageFlags::UNIFORM_BUFFER);
         white_buffer.upload(&Color::WHITE);
         let white_material = Material::default();
 

@@ -123,7 +123,7 @@ impl CommandBuffer {
         };
     }
 
-    pub fn bind_vertex_buffer(&self, buffer: &Buffer) {
+    pub fn bind_vertex_buffer(&self, buffer: &RenderBuffer) {
         let first_binding = 0;
         let buffers = [buffer.buffer];
         let offsets = [vk::DeviceSize::default()];
@@ -137,7 +137,7 @@ impl CommandBuffer {
         }
     }
 
-    pub fn bind_index_buffer(&self, buffer: &Buffer, index_type: vk::IndexType) {
+    pub fn bind_index_buffer(&self, buffer: &RenderBuffer, index_type: vk::IndexType) {
         unsafe {
             self.device
                 .cmd_bind_index_buffer(self.command_buffer, buffer.buffer, 0, index_type);
@@ -215,7 +215,7 @@ impl CommandBuffer {
 
     pub fn copy_buffer_to_image(
         &self,
-        buffer: &Buffer,
+        buffer: &RenderBuffer,
         image: &RenderImage,
         region: &vk::BufferImageCopy,
     ) {

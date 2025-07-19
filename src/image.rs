@@ -170,7 +170,7 @@ impl RenderImage {
     ) -> Self {
         let mut image = Self::sampled(allocator, width, height, format);
         let usage = vk::BufferUsageFlags::TRANSFER_SRC;
-        let staging = Buffer::from_data(allocator, data, usage);
+        let staging = RenderBuffer::from_data(allocator, data, usage);
         image.simple_copy_from(&staging, graphics_queue);
         image
     }
@@ -184,7 +184,7 @@ impl RenderImage {
             .expect("Failed to decode image");
         let rgba8_image = image_reader.into_rgba8();
         let dim = rgba8_image.dimensions();
-        let staging = Buffer::load(allocator, rgba8_image);
+        let staging = RenderBuffer::load(allocator, rgba8_image);
 
         let format = vk::Format::R8G8B8A8_SRGB;
         let mut image = Self::sampled(allocator, dim.0, dim.1, format);
@@ -236,7 +236,7 @@ impl RenderImage {
         fence.wait();
     }
 
-    pub fn simple_copy_from(&mut self, staging: &Buffer, graphics_queue: &GraphicsQueue) {
+    pub fn simple_copy_from(&mut self, staging: &RenderBuffer, graphics_queue: &GraphicsQueue) {
         // @todo Use TRANSFER pool and transfer queue
         let command_buffer = CommandBuffer::new(&graphics_queue.command_pool);
         command_buffer.begin(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
@@ -254,7 +254,7 @@ impl RenderImage {
         fence.wait();
     }
 
-    pub fn copy_from(&mut self, staging: &Buffer, command_buffer: &CommandBuffer) {
+    pub fn copy_from(&mut self, staging: &RenderBuffer, command_buffer: &CommandBuffer) {
         // Undefined -> Transfer dst optimal
         let new_layout = vk::ImageLayout::TRANSFER_DST_OPTIMAL;
 

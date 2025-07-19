@@ -17,8 +17,8 @@ fn size_of(index_type: vk::IndexType) -> usize {
 
 pub struct RenderPrimitive {
     pub vertex_count: u32,
-    pub vertices: Buffer,
-    pub indices: Option<Buffer>,
+    pub vertices: RenderBuffer,
+    pub indices: Option<RenderBuffer>,
     pub index_type: vk::IndexType,
 }
 
@@ -26,7 +26,7 @@ impl RenderPrimitive {
     pub fn empty<T>(allocator: &Arc<Allocator>) -> Self {
         Self {
             vertex_count: 0,
-            vertices: Buffer::new::<T>(allocator, vk::BufferUsageFlags::VERTEX_BUFFER),
+            vertices: RenderBuffer::new::<T>(allocator, vk::BufferUsageFlags::VERTEX_BUFFER),
             indices: None,
             index_type: vk::IndexType::UINT16,
         }
@@ -35,7 +35,7 @@ impl RenderPrimitive {
     pub fn new<T>(allocator: &Arc<Allocator>, vv: &[T]) -> Self {
         let vertex_count = vv.len() as u32;
 
-        let mut vertices = Buffer::new::<T>(allocator, vk::BufferUsageFlags::VERTEX_BUFFER);
+        let mut vertices = RenderBuffer::new::<T>(allocator, vk::BufferUsageFlags::VERTEX_BUFFER);
         vertices.upload_arr(vv);
 
         Self {
@@ -48,7 +48,7 @@ impl RenderPrimitive {
 
     pub fn set_indices(&mut self, ii: &[u8], index_type: vk::IndexType) {
         if self.indices.is_none() {
-            self.indices.replace(Buffer::new::<u8>(
+            self.indices.replace(RenderBuffer::new::<u8>(
                 &self.vertices.allocator,
                 vk::BufferUsageFlags::INDEX_BUFFER,
             ));
@@ -273,8 +273,7 @@ impl RenderPrimitive {
                     .collect();
                 Self::new(allocator, &vertices)
             }
-            PrimitiveMode::Triangles => Self::new(allocator, &gltf_primitive.vertices),
-            PrimitiveMode::TriangleStrip => todo!(),
+            PrimitiveMode::Triangles | PrimitiveMode::TriangleStrip => Self::new(allocator, &gltf_primitive.vertices),
             PrimitiveMode::TriangleFan => todo!(),
         };
 

@@ -9,7 +9,7 @@ use vk_mem::Alloc;
 
 use crate::*;
 
-pub struct Buffer {
+pub struct RenderBuffer {
     allocation: vk_mem::Allocation,
     pub buffer: vk::Buffer,
     usage: vk::BufferUsageFlags,
@@ -17,7 +17,7 @@ pub struct Buffer {
     pub allocator: Arc<Allocator>,
 }
 
-impl Buffer {
+impl RenderBuffer {
     fn create_buffer(
         allocator: &vk_mem::Allocator,
         size: vk::DeviceSize,
@@ -131,7 +131,7 @@ impl Buffer {
     }
 }
 
-impl Drop for Buffer {
+impl Drop for RenderBuffer {
     fn drop(&mut self) {
         unsafe {
             self.allocator

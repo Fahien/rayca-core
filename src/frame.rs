@@ -152,7 +152,7 @@ pub struct BufferCache<K>
 where
     K: std::hash::Hash + Eq,
 {
-    map: HashMap<K, Buffer>,
+    map: HashMap<K, RenderBuffer>,
     allocator: Arc<Allocator>,
 }
 
@@ -167,22 +167,22 @@ where
         }
     }
 
-    pub fn get_or_create<T>(&mut self, key: K) -> &mut Buffer {
+    pub fn get_or_create<T>(&mut self, key: K) -> &mut RenderBuffer {
         match self.map.entry(key) {
             Entry::Vacant(e) => {
                 let uniform_buffer =
-                    Buffer::new::<T>(&self.allocator, vk::BufferUsageFlags::UNIFORM_BUFFER);
+                    RenderBuffer::new::<T>(&self.allocator, vk::BufferUsageFlags::UNIFORM_BUFFER);
                 e.insert(uniform_buffer)
             }
             Entry::Occupied(e) => e.into_mut(),
         }
     }
 
-    pub fn get(&self, key: &K) -> Option<&Buffer> {
+    pub fn get(&self, key: &K) -> Option<&RenderBuffer> {
         self.map.get(key)
     }
 
-    pub fn get_mut(&mut self, key: &K) -> Option<&mut Buffer> {
+    pub fn get_mut(&mut self, key: &K) -> Option<&mut RenderBuffer> {
         self.map.get_mut(key)
     }
 }
