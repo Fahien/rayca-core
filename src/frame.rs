@@ -432,14 +432,6 @@ impl Frame {
         }
     }
 
-    fn update_nodes(&mut self, hmodel: Handle<RenderModel>, scene: &RenderScene) {
-        let model = scene.get_model(hmodel).unwrap();
-        let trs = model.get_root().trs.clone();
-        for node in model.get_root().children.iter().cloned() {
-            self.update_node(node, &trs, hmodel, scene);
-        }
-    }
-
     fn update_materials(&mut self, hmodel: Handle<RenderModel>, scene: &RenderScene) {
         let model = scene.get_model(hmodel).unwrap();
         for handle_index in 0..model.get_gltf().materials.len() {
@@ -457,10 +449,39 @@ impl Frame {
         }
     }
 
+    fn update_model_nodes(&mut self, trs: &Trs, hmodel: Handle<RenderModel>, scene: &RenderScene) {
+        let model = scene.get_model(hmodel).unwrap();
+        let root = model.get_root();
+        let world_trs = trs * &root.trs;
+        for node in root.children.iter().cloned() {
+            self.update_node(node, &world_trs, hmodel, scene);
+        }
+    }
+
+    fn update_scene_node(&mut self, node_handle: Handle<Node>, trs: &Trs, scene: &RenderScene) {
+        let node = scene.get_node(node_handle).unwrap();
+        let world_trs = trs * &node.trs;
+
+        if let Some(hmodel) = node.model {
+            self.update_model_nodes(&world_trs, hmodel.id.into(), scene);
+        }
+
+        for child in node.children.iter().cloned() {
+            self.update_scene_node(child, &world_trs, scene);
+        }
+    }
+
+    fn update_scene_nodes(&mut self, scene: &RenderScene) {
+        let root = scene.get_root();
+        for node in root.children.iter().copied() {
+            self.update_scene_node(node, &root.trs, scene);
+        }
+    }
+
     fn update(&mut self, scene: &RenderScene) {
         self.shaders_drawinfos.clear();
+        self.update_scene_nodes(scene);
         for hmodel in scene.get_models().get_handles() {
-            self.update_nodes(hmodel, scene);
             self.update_materials(hmodel, scene);
         }
     }

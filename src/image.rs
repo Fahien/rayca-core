@@ -177,7 +177,7 @@ impl RenderImage {
 
     /// Loads a PNG image from file and uploads it into a sampled image
     pub fn load(allocator: &Arc<Allocator>, graphics_queue: &GraphicsQueue, asset: Asset) -> Self {
-        let image_reader = ::image::ImageReader::new(std::io::Cursor::new(asset.data))
+        let image_reader = ::image::ImageReader::new(std::io::Cursor::new(asset.into_bytes()))
             .with_guessed_format()
             .expect("Failed to guess image format")
             .decode()

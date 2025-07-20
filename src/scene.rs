@@ -2,23 +2,49 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
-use std::sync::Arc;
+use std::{path::Path, sync::Arc};
 
 use crate::*;
 
 /// Represents a scene in the rendering context, containing multiple models and cameras.
 pub struct RenderScene {
+    pub glx: Scene,
     models: Pack<RenderModel>,
+    default_model_handle: Handle<RenderModel>,
     dev: Arc<Dev>,
 }
 
 impl RenderScene {
     /// Creates a new empty `RenderScene`.
-    pub fn new(dev: &Arc<Dev>) -> Self {
+    pub fn load_glx_path<P: AsRef<Path>>(dev: &Arc<Dev>, glx_path: P, assets: &Assets) -> Self {
+        let mut glx = Scene::load_glx_path(glx_path.as_ref(), assets);
+
+        let dir = glx_path.as_ref().parent().unwrap_or_else(|| Path::new("."));
+
         let mut models = Pack::new();
-        models.push(RenderModel::default(dev));
+
+        for model_source in glx.models.iter() {
+            let model_path = dir.join(&model_source.uri);
+            let model = Model::load_gltf_path(model_path, assets).expect("Failed to load model");
+            let model = RenderModel::new_with_gltf(dev, assets, model);
+            models.push(model);
+        }
+
+        // Add a default model to the scene, useful for having a camera at least.
+        let default_model = RenderModel::default(dev);
+        let default_model_handle = models.push(default_model);
+
+        let default_node = NodeBuilder::default()
+            .name("Default Model")
+            .model(default_model_handle.id.into())
+            .build();
+        let default_node_handle = glx.nodes.push(default_node);
+        glx.root.children.push(default_node_handle);
+
         Self {
+            glx,
             models,
+            default_model_handle,
             dev: dev.clone(),
         }
     }
@@ -54,21 +80,14 @@ impl RenderScene {
         self.models.get_mut(hmodel)
     }
 
-    /// Returns the default model handle, which is the first one in the pack.
-    pub fn get_default_model_handle(&self) -> Handle<RenderModel> {
-        Handle::new(0)
-    }
-
     /// Returns the default model, which is the first one in the pack.
     pub fn get_default_model(&self) -> &RenderModel {
-        self.models.get(self.get_default_model_handle()).unwrap()
+        self.models.get(self.default_model_handle).unwrap()
     }
 
     /// Returns a mutable reference to the default model.
     pub fn get_default_model_mut(&mut self) -> &mut RenderModel {
-        self.models
-            .get_mut(self.get_default_model_handle())
-            .unwrap()
+        self.models.get_mut(self.default_model_handle).unwrap()
     }
 
     /// Returns the handle of the node with the default camera.
@@ -109,14 +128,21 @@ impl RenderScene {
 
     /// Returns the default camera's draw info.
     pub fn get_default_camera_draw_info(&self) -> CameraDrawInfo {
-        let hmodel = self.get_default_model_handle();
-        let model = self.get_model(hmodel).unwrap();
+        let model = self.get_default_model();
         let hnode = model.get_first_node_with_camera();
         let node = model.get_node(hnode).unwrap();
         CameraDrawInfo {
             camera: node.camera.unwrap(),
             node: hnode,
-            model: hmodel,
+            model: self.default_model_handle,
         }
+    }
+
+    pub fn get_root(&self) -> &Node {
+        &self.glx.root
+    }
+
+    pub fn get_node(&self, handle: Handle<Node>) -> Option<&Node> {
+        self.glx.get_node(handle)
     }
 }

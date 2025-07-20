@@ -22,8 +22,8 @@ impl ShaderModule {
         let vert_path = vert_path.replace(".slang", ".spv");
         let frag_path = frag_path.replace(".slang", ".spv");
 
-        let vert_data = Asset::load(android_app, vert_path).data;
-        let frag_data = Asset::load(android_app, frag_path).data;
+        let vert_data = Asset::load(android_app, vert_path).into_bytes();
+        let frag_data = Asset::load(android_app, frag_path).into_bytes();
 
         (
             Self::from_data(device, &vert_data),
