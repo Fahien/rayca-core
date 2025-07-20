@@ -413,7 +413,7 @@ impl RenderModel {
         // For the moment, return the first camera in the first model
         for hnode in self.gltf.nodes.get_handles() {
             let node = self.gltf.nodes.get(hnode).unwrap();
-            if node.camera.is_valid() {
+            if node.camera.is_some() {
                 return hnode;
             }
         }

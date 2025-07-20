@@ -376,7 +376,7 @@ impl Frame {
         let node = model.get_node(node_handle).unwrap();
         let world_trs = trs * &node.trs;
 
-        if node.mesh.is_valid() || node.camera.is_valid() {
+        if node.mesh.is_some() || node.camera.is_some() {
             let model_matrix_key = ModelMatrixKey {
                 model: hmodel,
                 node: node_handle,
@@ -387,7 +387,8 @@ impl Frame {
                 .get_or_create::<Mat4>(model_matrix_key);
             uniform_buffer.upload(&world_trs.to_mat4());
 
-            if let Some(camera) = model.get_camera(node.camera) {
+            if let Some(camera_handle) = node.camera {
+                let camera = model.get_camera(camera_handle).unwrap();
                 let view_matrix_key = ViewMatrixKey {
                     model: hmodel,
                     node: node_handle,
@@ -400,7 +401,7 @@ impl Frame {
 
                 let proj_matrix_key = ProjMatrixKey {
                     model: hmodel,
-                    camera: node.camera,
+                    camera: camera_handle,
                 };
                 let proj_buffer = self
                     .cache
@@ -410,7 +411,8 @@ impl Frame {
             }
 
             // Collect draw infos for this node
-            if let Some(mesh) = model.get_mesh(node.mesh) {
+            if let Some(mesh_handle) = node.mesh {
+                let mesh = model.get_mesh(mesh_handle).unwrap();
                 for primitive_handle in mesh.primitives.iter().copied() {
                     let primitive = model.get_primitive(primitive_handle).unwrap();
                     let material = model

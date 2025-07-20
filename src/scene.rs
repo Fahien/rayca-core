@@ -94,12 +94,14 @@ impl RenderScene {
     /// Returns the default camera.
     pub fn get_default_camera(&self) -> &Camera {
         let node = self.get_default_camera_node();
-        self.get_default_model().get_camera(node.camera).unwrap()
+        self.get_default_model()
+            .get_camera(node.camera.unwrap())
+            .unwrap()
     }
 
     /// Returns a mutable reference to the default camera.
     pub fn get_default_camera_mut(&mut self) -> &mut Camera {
-        let hcamera = self.get_default_camera_node().camera;
+        let hcamera = self.get_default_camera_node().camera.unwrap();
         self.get_default_model_mut()
             .get_camera_mut(hcamera)
             .unwrap()
@@ -112,7 +114,7 @@ impl RenderScene {
         let hnode = model.get_first_node_with_camera();
         let node = model.get_node(hnode).unwrap();
         CameraDrawInfo {
-            camera: node.camera,
+            camera: node.camera.unwrap(),
             node: hnode,
             model: hmodel,
         }
